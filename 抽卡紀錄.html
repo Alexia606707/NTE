@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NTE 異環 抽卡紀錄</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        :root {
+            --bg-dark: #0a0d12;
+            --bg-card: rgba(255,255,255,0.035);
+            --border: rgba(0,229,255,0.08);
+            --accent: #00e5ff;
+            --accent-dim: rgba(0,229,255,0.4);
+            --cyan: #00e5ff;
+            --teal: #1de9b6;
+            --gold: #ffd740;
+            --purple: #b388ff;
+            --red: #ff5252;
+            --blue: #448aff;
+            --orange: #ffab40;
+            --green: #69f0ae;
+            --text: #e0e0e0;
+            --text-dim: #7c8aaa;
+            --grade-s: #ffd740;
+            --grade-a: #b388ff;
+            --grade-b: #448aff;
+        }
+        body {
+            font-family: 'Microsoft JhengHei','Segoe UI',system-ui,sans-serif;
+            background: linear-gradient(135deg, #0a0d12 0%, #0d1a1f 40%, #0a1218 100%);
+            min-height: 100vh; padding: 30px 16px; color: var(--text);
+            position: relative;
+        }
+        /* 背景網格 */
+        body::before {
+            content:''; position:fixed; top:0; left:0; right:0; bottom:0; z-index:0; pointer-events:none;
+            background:
+                linear-gradient(135deg, rgba(0,229,255,0.03) 0%, transparent 50%, rgba(29,233,182,0.02) 100%),
+                repeating-linear-gradient(0deg, transparent, transparent 80px, rgba(0,229,255,0.02) 80px, rgba(0,229,255,0.02) 81px),
+                repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(0,229,255,0.02) 80px, rgba(0,229,255,0.02) 81px);
+        }
+        /* 漂浮光點 */
+        body::after {
+            content:''; position:fixed; top:0; left:0; right:0; bottom:0; z-index:0; pointer-events:none;
+            background:
+                radial-gradient(2px 2px at 10% 20%, rgba(0,229,255,0.3), transparent),
+                radial-gradient(2px 2px at 30% 60%, rgba(29,233,182,0.2), transparent),
+                radial-gradient(2px 2px at 70% 30%, rgba(179,136,255,0.2), transparent),
+                radial-gradient(2px 2px at 85% 70%, rgba(0,229,255,0.25), transparent),
+                radial-gradient(2px 2px at 50% 85%, rgba(255,215,64,0.15), transparent),
+                radial-gradient(1px 1px at 20% 45%, rgba(0,229,255,0.2), transparent),
+                radial-gradient(1px 1px at 60% 15%, rgba(29,233,182,0.15), transparent),
+                radial-gradient(1px 1px at 90% 50%, rgba(179,136,255,0.15), transparent);
+            animation: floatDots 20s ease-in-out infinite alternate;
+        }
+        @keyframes floatDots {
+            0% { opacity:0.6; transform:translateY(0); }
+            100% { opacity:1; transform:translateY(-20px); }
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; position:relative; z-index:1; }
+
+        /* ===== 標題 ===== */
+        .hero {
+            text-align:center; margin-bottom:40px; padding:32px 24px 26px;
+            background: linear-gradient(135deg, rgba(0,229,255,.06) 0%, rgba(29,233,182,.04) 50%, rgba(179,136,255,.06) 100%);
+            border:1px solid rgba(0,229,255,.15);
+            border-radius:18px;
+            position:relative; overflow:hidden;
+        }
+        .hero::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:2px;
+            background: linear-gradient(90deg, transparent, var(--cyan), var(--teal), var(--cyan), transparent);
+            animation: scanLine 3s linear infinite;
+        }
+        .hero::after {
+            content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+            background: linear-gradient(90deg, transparent, var(--teal), var(--cyan), var(--teal), transparent);
+            animation: scanLine 3s linear infinite reverse;
+        }
+        @keyframes scanLine { 0%{background-position:-200% center} 100%{background-position:200% center} }
+        .hero h1 {
+            font-size:2.6em; letter-spacing:6px; margin-bottom:4px;
+            background: linear-gradient(90deg, var(--cyan), var(--teal), var(--purple), var(--cyan));
+            background-size:300% auto;
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+            animation: shimmer 5s linear infinite;
+            filter: drop-shadow(0 0 20px rgba(0,229,255,.3));
+        }
+        .hero .sub { color:var(--text-dim); margin-top:8px; font-size:.9em; letter-spacing:3px; }
+        @keyframes shimmer { 0%{background-position:0% center} 100%{background-position:300% center} }
+
+        /* 裝飾角落 */
+        .corner-deco { position:absolute; width:20px; height:20px; }
+        .corner-deco.tl { top:8px; left:8px; border-top:2px solid var(--cyan); border-left:2px solid var(--cyan); }
+        .corner-deco.tr { top:8px; right:8px; border-top:2px solid var(--cyan); border-right:2px solid var(--cyan); }
+        .corner-deco.bl { bottom:8px; left:8px; border-bottom:2px solid var(--teal); border-left:2px solid var(--teal); }
+        .corner-deco.br { bottom:8px; right:8px; border-bottom:2px solid var(--teal); border-right:2px solid var(--teal); }
+
+        /* ===== 分頁 Tab ===== */
+        .tab-bar {
+            display:flex; gap:0; margin-bottom:30px; border-radius:12px; overflow:hidden;
+            border:1px solid var(--border); background:var(--bg-card);
+        }
+        .tab-btn {
+            flex:1; padding:14px 20px; text-align:center; cursor:pointer;
+            font-size:1.05em; font-weight:700; letter-spacing:2px;
+            color:var(--text-dim); background:transparent; border:none;
+            transition:all .2s; font-family:inherit; position:relative;
+        }
+        .tab-btn:hover { color:var(--text); background:rgba(255,255,255,.03); }
+        .tab-btn.active { color:var(--cyan); background:rgba(0,229,255,.08); }
+        .tab-btn.active::after {
+            content:''; position:absolute; bottom:0; left:20%; right:20%; height:3px;
+            background:var(--cyan); border-radius:3px 3px 0 0;
+        }
+        .tab-page { display:none; }
+        .tab-page.show { display:block; }
+
+        /* ===== 總覽卡片 ===== */
+        .stats-grid {
+            display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
+            gap:14px; margin-bottom:30px;
+        }
+        .stat-box {
+            background: rgba(0,229,255,.03); border:1px solid rgba(0,229,255,.08);
+            border-radius:14px; padding:18px 14px; text-align:center;
+            transition: transform .2s; position:relative; overflow:visible;
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+        }
+        .stat-box::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:1px;
+            background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+            opacity:0; transition: opacity .3s;
+        }
+        .stat-box:hover { transform:translateY(-2px); }
+        .stat-box:hover::before { opacity:1; }
+        .stat-box .label { font-size:.75em; color:var(--text-dim); margin-bottom:6px; letter-spacing:1px; }
+        .stat-box .val { font-size:1.5em; font-weight:800; }
+        .stat-box .note { font-size:.7em; color:var(--text-dim); margin-top:4px; white-space:nowrap; }
+
+        /* ===== 區塊共用 ===== */
+        .section { margin-bottom:40px; }
+        .section-title {
+            font-size:1.25em; font-weight:700; color:var(--cyan);
+            margin-bottom:18px; margin-top:12px; padding:10px 16px;
+            border-left:3px solid var(--cyan);
+            background: linear-gradient(90deg, rgba(0,229,255,.06), transparent);
+            backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+            border-radius:0 8px 8px 0;
+            cursor:pointer; user-select:none;
+            letter-spacing:2px;
+            display:flex; align-items:center;
+            position:sticky; top:0; z-index:20;
+        }
+        .section-title .arrow { margin-left:auto; font-size:.7em; }
+        .section-title .badge-count {
+            margin-left:10px; font-size:.7em; padding:2px 10px;
+            background:rgba(0,229,255,.12); border:1px solid rgba(0,229,255,.2);
+            border-radius:12px; color:var(--cyan); font-weight:400;
+        }
+
+        /* ===== 等級標籤 ===== */
+        .grade-tag {
+            display:inline-block; font-size:.72em; padding:2px 10px; border-radius:4px;
+            font-weight:700; letter-spacing:1px; line-height:1.6;
+        }
+        .grade-s { background:rgba(255,215,64,.15); border:1px solid rgba(255,215,64,.3); color:var(--grade-s); text-shadow:0 0 8px rgba(255,215,64,.5), 0 0 20px rgba(255,215,64,.25); }
+        .grade-a { background:rgba(179,136,255,.12); border:1px solid rgba(179,136,255,.25); color:var(--grade-a); }
+        .grade-b { background:rgba(68,138,255,.12); border:1px solid rgba(68,138,255,.25); color:var(--grade-b); }
+
+        /* ===== 類型標籤 ===== */
+        .type-tag {
+            display:inline-block; font-size:.7em; padding:2px 8px; border-radius:4px;
+            background:rgba(0,229,255,.06); border:1px solid rgba(0,229,255,.1); color:var(--text-dim);
+            letter-spacing:1px;
+        }
+        .type-tag.char { background:rgba(29,233,182,.08); border-color:rgba(29,233,182,.15); color:var(--teal); }
+        .type-tag.equip { background:rgba(68,138,255,.08); border-color:rgba(68,138,255,.15); color:var(--blue); }
+        .type-tag.skin { background:rgba(255,171,64,.08); border-color:rgba(255,171,64,.15); color:var(--orange); }
+        .type-tag.costume { background:rgba(179,136,255,.08); border-color:rgba(179,136,255,.15); color:var(--purple); }
+
+        /* ===== 卡池卡片 ===== */
+        .banner-card {
+            background: rgba(0,229,255,.02); border:1px solid rgba(0,229,255,.08);
+            border-radius:14px; padding:22px 24px; margin-bottom:16px;
+            transition: transform .15s; position:relative; overflow:hidden;
+        }
+        .banner-card::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:1px;
+            background: linear-gradient(90deg, transparent, var(--cyan), transparent); opacity:0.5;
+        }
+        .banner-card:hover { transform:translateY(-1px); }
+        .banner-hd { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+        .banner-name { font-size:1.08em; font-weight:700; color:var(--cyan); letter-spacing:2px; }
+        .banner-featured { font-size:.85em; color:var(--teal); margin-left:8px; font-weight:400; letter-spacing:1px; }
+        .banner-date {
+            font-size:.78em; color:var(--text-dim);
+            background:rgba(0,229,255,.06); padding:4px 14px; border-radius:20px;
+            border:1px solid rgba(0,229,255,.08); letter-spacing:1px;
+        }
+        .banner-items { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+        .item-tag {
+            font-size:.74em; padding:4px 12px; border-radius:6px;
+            background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05);
+            color:var(--text-dim); display:inline-flex; align-items:center; gap:4px;
+        }
+        .item-tag.item-s { background:rgba(255,215,64,.06); border-color:rgba(255,215,64,.18); color:var(--grade-s); }
+        .item-tag.item-a { background:rgba(179,136,255,.06); border-color:rgba(179,136,255,.18); color:var(--grade-a); }
+        .item-tag.item-b { background:rgba(68,138,255,.06); border-color:rgba(68,138,255,.18); color:var(--grade-b); }
+
+        /* 抽卡結果表格 */
+        table.pull-tbl {
+            width:100%; border-collapse:separate; border-spacing:0;
+            border-radius:10px; overflow:hidden;
+            border:1px solid rgba(0,229,255,.06); margin-bottom:12px;
+        }
+        .pull-tbl th {
+            background:rgba(0,229,255,.06); padding:9px 10px; font-size:.78em;
+            color:var(--cyan); letter-spacing:1px; text-align:center;
+            border-bottom:1px solid rgba(0,229,255,.08);
+        }
+        .pull-tbl td {
+            padding:8px 10px; font-size:.84em; text-align:center;
+            border-bottom:1px solid rgba(255,255,255,.02);
+        }
+        .pull-tbl tr:last-child td { border:none; }
+        .pull-tbl tr:hover td { background:rgba(0,229,255,.03); }
+        .pull-tbl .left { text-align:left; }
+        .pull-tbl .pull-name { font-weight:600; }
+        .pull-name.s-rank { color:var(--grade-s); text-shadow:0 0 10px rgba(255,215,64,.5), 0 0 24px rgba(255,215,64,.25); }
+        .pull-name.a-rank { color:var(--grade-a); }
+        .pull-name.b-rank { color:var(--grade-b); }
+        .pull-at { color:var(--teal); font-weight:700; }
+        .pull-batch { color:#a0aec0; font-size:.85em; }
+
+        /* 花費統計 */
+        .cost-bar {
+            display:flex; gap:16px; flex-wrap:wrap; align-items:center;
+            background:rgba(0,229,255,.03); border:1px solid rgba(0,229,255,.06);
+            border-radius:10px; padding:10px 18px; font-size:.82em;
+        }
+        .cost-item { display:flex; align-items:center; gap:6px; }
+        .cost-label { color:var(--text); letter-spacing:1px; }
+        .cost-val { font-weight:700; }
+        .cost-val.dice { color:var(--orange); }
+        .cost-val.stones { color:var(--cyan); }
+
+        /* ===== 統計圖表區 ===== */
+        .chart-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; }
+        .chart-card {
+            background: rgba(0,229,255,.02); border:1px solid rgba(0,229,255,.06);
+            border-radius:14px; padding:20px; position:relative;
+        }
+        .chart-card h3 { font-size:.85em; color:var(--text-dim); letter-spacing:2px; margin-bottom:14px; font-weight:400; }
+
+
+        /* ===== 比例條 tooltip ===== */
+        .bar-seg {
+            display:flex; align-items:center; justify-content:center;
+            font-size:.75em; font-weight:700; cursor:default;
+            position:relative; transition:opacity .2s;
+        }
+        .bar-seg:first-child { border-radius:6px 0 0 6px; }
+        .bar-seg:last-child { border-radius:0 6px 6px 0; }
+        .bar-seg:only-child { border-radius:6px; }
+        .bar-seg:hover { opacity:.85; }
+        .bar-seg .tip {
+            position:absolute; bottom:calc(100% + 8px); left:50%;
+            transform:translateX(-50%) translateY(6px); white-space:pre; padding:8px 14px;
+            background:rgba(10,15,20,.95); border:1px solid rgba(0,229,255,.2);
+            border-radius:8px; font-size:11px; font-weight:400; line-height:1.6;
+            color:var(--text); pointer-events:none; z-index:30;
+            box-shadow:0 4px 16px rgba(0,0,0,.4);
+            opacity:0; transition:opacity .2s, transform .2s;
+        }
+        .bar-seg .tip::after {
+            content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+            border:5px solid transparent; border-top-color:rgba(0,229,255,.2);
+        }
+        .bar-seg:hover .tip { opacity:1; transform:translateX(-50%) translateY(0); }
+
+        /* ===== 圖表 ===== */
+        .chart-wrap {
+            background:var(--bg-card); border:1px solid var(--border);
+            border-radius:14px; padding:20px; margin-bottom:18px;
+            position:relative; width:100%; min-width:0; overflow:hidden;
+        }
+
+        /* ===== 排行表格 ===== */
+        .rank-tbl { width:100%; border-collapse:separate; border-spacing:0; border-radius:10px; overflow:hidden; border:1px solid var(--border); }
+        .rank-tbl th { background:rgba(0,229,255,.06); padding:10px 12px; font-size:.8em; color:var(--cyan); text-align:center; border-bottom:1px solid var(--border); }
+        .rank-tbl td { padding:9px 12px; font-size:.85em; text-align:center; border-bottom:1px solid rgba(255,255,255,.02); }
+        .rank-tbl tr:hover td { background:rgba(0,229,255,.03); }
+        .rank-tbl .left { text-align:left; }
+        .c-green { color:var(--green); font-weight:700; }
+        .c-red { color:var(--red); font-weight:700; }
+        .c-dim { color:var(--text-dim); }
+        .mob-br { display:none; }
+        .mob-br-wrap { white-space:nowrap; }
+
+        /* ===== 抽卡時間軸 ===== */
+        .timeline { position:relative; padding-left:30px; }
+        .timeline::before {
+            content:''; position:absolute; left:10px; top:0; bottom:0; width:2px;
+            background: linear-gradient(to bottom, var(--cyan), var(--teal), transparent);
+        }
+        .timeline-item {
+            position:relative; margin-bottom:10px; padding:10px 16px;
+            background:rgba(0,229,255,.02); border:1px solid rgba(0,229,255,.05);
+            border-radius:10px; font-size:.85em;
+        }
+        .timeline-item::before {
+            content:''; position:absolute; left:-24px; top:14px;
+            width:8px; height:8px; border-radius:50%;
+            border:2px solid var(--cyan); background:var(--bg-dark);
+        }
+        .timeline-item.ltd-item::before {
+            border-color:var(--grade-a); background:var(--grade-a);
+        }
+        .timeline-item.ltd-item.s-item::before {
+            border-color:var(--grade-s); background:var(--grade-s);
+            width:10px; height:10px; top:13px; left:-25px;
+            box-shadow:0 0 12px rgba(255,215,64,.6), 0 0 24px rgba(255,215,64,.3);
+        }
+
+        /* ===== 管理後台樣式 ===== */
+        .form-section {
+            background:var(--bg-card); border:1px solid var(--border);
+            border-radius:14px; padding:24px; margin-bottom:20px;
+        }
+        .form-section h2 {
+            font-size:1.2em; color:var(--cyan); margin-bottom:16px;
+            padding-bottom:8px; border-bottom:1px solid var(--border);
+            letter-spacing:2px;
+        }
+        .form-row { display:flex; gap:12px; margin-bottom:12px; align-items:flex-start; flex-wrap:wrap; }
+        .form-group { display:flex; flex-direction:column; gap:4px; flex:1; min-width:140px; }
+        .form-group label { font-size:.9em; color:var(--text-dim); letter-spacing:1px; }
+        .form-group input, .form-group select, .form-group textarea {
+            padding:10px 14px; border-radius:8px; border:1px solid var(--border);
+            background:rgba(255,255,255,.03); color:var(--text); font-size:1em;
+            outline:none; font-family:inherit;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--cyan); }
+        .form-group select option { background:#0a0d12; color:#e0e0e0; }
+        .form-group input.has-value, .form-group select.has-value, .form-group textarea.has-value {
+            border-left:4px solid var(--cyan); border-color:rgba(0,229,255,.5);
+            background:rgba(0,229,255,.08); color:#ffffff; box-shadow:0 0 6px rgba(0,229,255,.15);
+        }
+        .form-group select { -webkit-appearance:none; -moz-appearance:none; appearance:none; padding-right:30px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235c6b7a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; }
+        .form-group input[type="date"] { min-height:42px; cursor:pointer; }
+        .form-group input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(.7); cursor:pointer; }
+
+        .pull-entry {
+            background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05);
+            border-radius:10px; padding:14px; margin-bottom:10px; position:relative;
+        }
+        .pull-entry .pull-num {
+            position:absolute; top:8px; left:12px; font-size:.9em; color:var(--cyan);
+            background:rgba(0,229,255,.12); padding:4px 12px; border-radius:6px; font-weight:600;
+        }
+        .pull-entry .form-row { margin-top:12px; }
+        .pull-entry .form-row:first-of-type { margin-top:36px; }
+
+        .pull-cell {
+            display:flex; flex-direction:column; align-items:center; gap:6px;
+            background:rgba(0,229,255,.04); border:1px solid rgba(0,229,255,.12);
+            border-radius:8px; padding:12px 10px; flex:1;
+        }
+        .pull-cell-tag { font-size:.9em; color:var(--cyan); font-weight:600; letter-spacing:1px; }
+        .pull-cell-unit { font-size:.78em; color:var(--text-dim); }
+        .pull-qty-row { display:flex; align-items:center; gap:0; }
+        .pull-qty-row .qty-btn {
+            width:40px; height:40px; border:1px solid var(--border); background:rgba(255,255,255,.06);
+            color:var(--cyan); font-size:1.2em; font-weight:700; cursor:pointer;
+            display:flex; align-items:center; justify-content:center; transition:all .2s;
+            user-select:none; line-height:1;
+        }
+        .pull-qty-row .qty-btn.minus { border-radius:6px 0 0 6px; }
+        .pull-qty-row .qty-btn.plus { border-radius:0 6px 6px 0; }
+        .pull-qty-row .qty-btn:hover { background:rgba(0,229,255,.15); border-color:var(--cyan); }
+        .pull-qty-row .qty-btn:active { background:rgba(0,229,255,.25); }
+        .pull-qty-row input {
+            width:60px; height:40px; padding:6px 4px; border-radius:0; border:1px solid var(--border);
+            border-left:none; border-right:none;
+            background:rgba(255,255,255,.03); color:#b0b8cc; font-size:1em;
+            text-align:center; outline:none; -moz-appearance:textfield;
+        }
+        .pull-qty-row input::-webkit-outer-spin-button,
+        .pull-qty-row input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+        .pull-qty-row input.has-value { color:#ffffff; }
+
+        .check-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+
+        .btn {
+            padding:10px 24px; border-radius:8px; border:1px solid var(--border);
+            background:var(--bg-card); color:var(--text-dim); cursor:pointer; font-size:.95em;
+            transition:all .2s; font-family:inherit;
+        }
+        .btn:hover { border-color:var(--cyan); color:var(--cyan); }
+        .btn-accent { background:rgba(0,229,255,.1); border-color:var(--cyan); color:var(--cyan); }
+        .btn-accent:hover { background:rgba(0,229,255,.2); }
+        .btn-danger { border-color:var(--red); color:var(--red); }
+        .btn-danger:hover { background:rgba(255,82,82,.1); }
+        .btn-green { border-color:var(--green); color:var(--green); }
+        .btn-green:hover { background:rgba(105,240,174,.1); }
+        .btn-row { display:flex; gap:10px; flex-wrap:wrap; }
+
+        .preview-box {
+            background:rgba(0,0,0,.3); border:1px solid var(--border); border-radius:10px;
+            padding:16px; font-family:'Consolas','Source Code Pro',monospace;
+            font-size:.82em; line-height:1.6; white-space:pre-wrap; word-break:break-all;
+            color:var(--cyan); max-height:400px; overflow-y:auto; position:relative;
+        }
+        .copy-btn {
+            position:absolute; top:8px; right:8px; padding:4px 12px; border-radius:6px;
+            background:rgba(0,229,255,.15); border:1px solid var(--cyan); color:var(--cyan);
+            cursor:pointer; font-size:.8em;
+        }
+        .copy-btn:hover { background:rgba(0,229,255,.3); }
+
+        .toast {
+            position:fixed; top:20px; right:20px; padding:14px 24px; border-radius:10px;
+            background:rgba(105,240,174,.12); border:1px solid var(--green); color:var(--green);
+            font-size:.9em; z-index:999; display:none; opacity:0; transition:opacity .3s;
+        }
+        .toast.show { display:block; opacity:1; }
+        .toast.error { background:rgba(255,82,82,.12); border-color:var(--red); color:var(--red); }
+
+        .data-list { margin-top:16px; }
+        .data-item {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:10px 16px; border-radius:8px; border:1px solid rgba(255,255,255,.03);
+            margin-bottom:6px; font-size:.85em;
+        }
+        .data-item:hover { background:rgba(0,229,255,.03); }
+        .data-item .name { color:var(--cyan); font-weight:600; }
+        .data-item .meta { color:var(--text-dim); font-size:.85em; }
+
+        .card-entry { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
+        .card-entry select, .card-entry input {
+            padding:8px 12px; border-radius:8px; border:1px solid var(--border);
+            background:rgba(255,255,255,.03); color:var(--text); font-size:.95em;
+            outline:none; font-family:inherit;
+        }
+        .card-entry select { -webkit-appearance:none; -moz-appearance:none; appearance:none;
+            padding-right:28px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235c6b7a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center;
+        }
+        .card-entry select option { background:#0a0d12; color:#e0e0e0; }
+        .card-entry input { flex:2; }
+        .card-entry .card-del {
+            background:none; border:none; color:var(--red); cursor:pointer; font-size:1.1em;
+            padding:4px 8px; opacity:.5; transition:opacity .2s;
+        }
+        .card-entry .card-del:hover { opacity:1; }
+
+        /* ===== 回到頂端 ===== */
+        .back-top {
+            position:fixed; bottom:24px; right:24px; width:42px; height:42px;
+            border-radius:50%; background:rgba(0,229,255,.15); border:1px solid var(--cyan);
+            color:var(--cyan); font-size:1.2em; cursor:pointer; display:none;
+            align-items:center; justify-content:center; z-index:99; backdrop-filter:blur(6px);
+            transition:all .3s;
+        }
+        .back-top:hover { background:rgba(0,229,255,.3); box-shadow:0 0 20px rgba(0,229,255,.3); }
+        .back-top.show { display:flex; }
+
+        /* ===== RWD ===== */
+        @media(max-width:700px){
+            .mob-br { display:inline; }
+            .mob-br-wrap { display:block; }
+            .hero h1 { font-size:1.6em; }
+            .hero { padding:24px 16px 20px; }
+            .stats-grid { grid-template-columns:repeat(2,1fr); }
+            .banner-card { padding:14px 12px; }
+            .pull-tbl th,.pull-tbl td { padding:6px 5px; font-size:.72em; }
+        }
+        @media(max-width:600px){
+            #tabAdmin .form-row { flex-direction:column; }
+            #tabAdmin .form-group { min-width:100%; }
+            #tabAdmin .form-row:has(.pull-cell) { flex-direction:row; }
+            #tabAdmin .pull-cell { min-width:0; flex:1; padding:10px 6px; }
+            #tabAdmin .pull-qty-row .qty-btn { width:34px; height:34px; font-size:1em; }
+            #tabAdmin .pull-qty-row input { width:50px; height:34px; font-size:.85em; }
+        }
+        @media(max-width:450px){
+            .stats-grid { grid-template-columns:repeat(2,1fr); gap:8px; }
+            .stat-box .val { font-size:1.2em; }
+            .stat-box .note { white-space:normal; }
+            .chart-grid { grid-template-columns:1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="app"></div>
+<button class="back-top" id="btnTop">↑</button>
+<div class="toast" id="toast"></div>
+
+<script>document.write('<script src="NTE_data.js?' + Date.now() + '"><\/script>');</script>
+<script>
+// ============================
+// 工具函式
+// ============================
+function getTypeClass(type) {
+    if (type === '角色') return 'char';
+    if (type === '滑翔翼') return 'equip';
+    if (type === '塗裝') return 'skin';
+    if (type === '時裝') return 'costume';
+    return '';
+}
+function getTypeIcon(type) {
+    if (type === '角色') return '👤';
+    if (type === '滑翔翼') return '🪂';
+    if (type === '塗裝') return '🎨';
+    if (type === '時裝') return '👗';
+    return '📦';
+}
+function gradeClass(g) {
+    return g === 'S' ? 'grade-s' : g === 'A' ? 'grade-a' : 'grade-b';
+}
+function gradeRankClass(g) {
+    return g === 'S' ? 's-rank' : g === 'A' ? 'a-rank' : 'b-rank';
+}
+// 解析算式字串，例：'10+6' → 16
+function sumFormula(str) {
+    if (!str) return 0;
+    return String(str).split('+').reduce(function(s, v){ return s + (parseInt(v) || 0); }, 0);
+}
+
+// ============================
+// 計算引擎
+// ============================
+function compute() {
+    var totalPulls = 0, totalDice = 0, totalStones = 0;
+    var totalS = 0, totalA = 0, totalB = 0;
+    var totalChars = 0, totalEquips = 0, sChars = 0, aChars = 0, sEquips = 0, aEquips = 0;
+    var limitedChars = 0, limitedEquips = 0, stdChars = 0;
+    var bannerCount = banners.length;
+    var allPulls = [];
+
+    banners.forEach(function(b) {
+        var bPulls = sumFormula(b.cost.pulls);
+        totalPulls += bPulls;
+        totalDice += sumFormula(b.cost.dice);
+        totalStones += sumFormula(b.cost.stones);
+        // 建立該卡池限定名單
+        var itemNames = {};
+        b.items.forEach(function(item) { itemNames[item.n] = item.type; });
+        b.pulls.forEach(function(p) {
+            if (p.grade === 'S') totalS++;
+            else if (p.grade === 'A') totalA++;
+            else totalB++;
+            var isLimited = !!itemNames[p.n];
+            if (p.type === '角色') {
+                totalChars++;
+                if (p.grade === 'S') sChars++;
+                else if (p.grade === 'A') aChars++;
+                if (isLimited) limitedChars++;
+                else stdChars++;
+            } else {
+                totalEquips++;
+                if (p.grade === 'S') sEquips++;
+                else if (p.grade === 'A') aEquips++;
+                if (isLimited) limitedEquips++;
+            }
+            allPulls.push({ n:p.n, grade:p.grade, type:p.type, at:p.at, totalPulls:bPulls, banner:b.name, featured:b.featured, date:b.date, limited:isLimited });
+        });
+    });
+    var avgPullsPerItem = allPulls.length ? Math.round(totalPulls / allPulls.length * 10) / 10 : 0;
+    // 從第一期卡池開始日到今天的月數
+    var firstParts = banners[0].date.split('-')[0].split('/');
+    var firstD = new Date(parseInt(firstParts[0]), parseInt(firstParts[1])-1, parseInt(firstParts[2]));
+    var now = new Date();
+    var totalMonths = Math.max(1, Math.round((now - firstD) / (1000*60*60*24*30)));
+    var avgPullsPerMonth = Math.round(totalPulls / totalMonths);
+    return { totalPulls:totalPulls, totalDice:totalDice, totalStones:totalStones, totalMonths:totalMonths, avgPullsPerMonth:avgPullsPerMonth,
+        totalS:totalS, totalA:totalA, totalB:totalB,
+        totalChars:totalChars, totalEquips:totalEquips, sChars:sChars, aChars:aChars, sEquips:sEquips, aEquips:aEquips,
+        limitedChars:limitedChars, limitedEquips:limitedEquips, stdChars:stdChars,
+        bannerCount:bannerCount, allPulls:allPulls, avgPullsPerItem:avgPullsPerItem };
+}
+
+// ============================
+// 分頁切換
+// ============================
+function switchTab(tab, btn) {
+    document.querySelectorAll('#app > .tab-bar .tab-btn').forEach(function(b){ b.className = 'tab-btn'; });
+    btn.className = 'tab-btn active';
+    document.querySelectorAll('#app > .tab-page').forEach(function(p){ p.classList.remove('show'); });
+    var target;
+    if (tab === 'admin') target = document.getElementById('tabAdmin');
+    else target = document.getElementById('tabGacha');
+    if (target) target.classList.add('show');
+    if (tab === 'admin' && !window._adminInitialized) initAdminPanel();
+    window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function toggleSec(el) {
+    var body = el.nextElementSibling;
+    var arrow = el.querySelector('.arrow');
+    if (body.style.display === 'none') { body.style.display = ''; arrow.textContent = '▼'; }
+    else { body.style.display = 'none'; arrow.textContent = '▶'; }
+}
+
+// ============================
+// 渲染
+// ============================
+function render() {
+    var d = compute();
+    var app = document.getElementById('app');
+    var h = '';
+
+    var firstDate = banners[0].date.split('-')[0];
+    var lastDate = banners[banners.length - 1].date.split('-')[0];
+
+    // --- 標題 ---
+    h += '<div class="hero">';
+    h += '<div class="corner-deco tl"></div><div class="corner-deco tr"></div>';
+    h += '<div class="corner-deco bl"></div><div class="corner-deco br"></div>';
+    h += '<h1>NTE 異環 抽卡紀錄</h1>';
+    var lastDateShort = lastDate.split('/').slice(0,2).join('/');
+    h += '<div class="sub">全 ' + d.bannerCount + ' 期限定卡池完整數據 ── <span style="display:inline-block">' + firstDate + ' ~ ' + lastDateShort + '</span></div>';
+    h += '</div>';
+
+    // --- 分頁 Tab ---
+    h += '<div class="tab-bar">';
+    h += '<button class="tab-btn active" onclick="switchTab(\'gacha\',this)">抽卡紀錄</button>';
+    h += '<button class="tab-btn" onclick="switchTab(\'admin\',this)">管理後台</button>';
+    h += '</div>';
+
+    // ========== 抽卡紀錄分頁 ==========
+    h += '<div class="tab-page show" id="tabGacha">';
+
+    // --- 1. 總覽 ---
+    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">總覽數據<span class="arrow" style="font-size:.7em">▼</span></div><div class="sec-body">';
+    h += '<div class="stats-grid">';
+    h += '<div class="stat-box"><div class="label">總抽數</div><div class="val" style="color:var(--teal)">' + d.totalPulls + '</div><div class="note">每月平均 ' + d.avgPullsPerMonth + ' 抽 ∣ 共 ' + d.totalMonths + ' 個月</div></div>';
+    h += '<div class="stat-box"><div class="label">總獲得</div><div class="val" style="color:var(--cyan)">' + d.allPulls.length + '</div><div class="note">限定 ' + d.limitedChars + '+' + d.limitedEquips + ' + 常駐 ' + d.stdChars + '</div></div>';
+    h += '<div class="stat-box"><div class="label">S 級</div><div class="val" style="color:var(--grade-s)">' + d.totalS + '</div><div class="note">角色 ' + d.sChars + ' + 裝扮 ' + d.sEquips + '</div></div>';
+    h += '<div class="stat-box"><div class="label">A 級</div><div class="val" style="color:var(--grade-a)">' + d.totalA + '</div><div class="note">角色 ' + d.aChars + ' + 裝扮 ' + d.aEquips + '</div></div>';
+    var avgDicePerBanner = d.bannerCount ? Math.round(d.totalDice / d.bannerCount) : 0;
+    var avgStonesPerBanner = d.bannerCount ? Math.round(d.totalStones / d.bannerCount) : 0;
+    h += '<div class="stat-box"><div class="label">總骰子</div><div class="val" style="color:var(--orange)">' + d.totalDice + '</div><div class="note">每池平均 ' + avgDicePerBanner + '</div></div>';
+    h += '<div class="stat-box"><div class="label">總環石</div><div class="val" style="color:var(--cyan)">' + d.totalStones.toLocaleString() + '</div><div class="note">每池平均 ' + avgStonesPerBanner.toLocaleString() + '</div></div>';
+    h += '</div>';
+
+    var total = d.allPulls.length || 1;
+    var sPct = Math.round(d.totalS / total * 100);
+    var aPct = Math.round(d.totalA / total * 100);
+    var bPct = 100 - sPct - aPct;
+    var charPct = Math.round(d.totalChars / total * 100);
+    var equipPct = 100 - charPct;
+
+    h += '<div class="chart-grid" style="margin-top:4px">';
+    h += '<div class="chart-card"><h3>等級分布</h3>';
+    h += '<div style="display:flex;height:28px;margin-bottom:10px">';
+    if (d.totalS > 0) h += '<div class="bar-seg" style="width:' + Math.max(sPct,5) + '%;background:rgba(255,215,64,.35);color:var(--grade-s)">' + d.totalS + '<span class="tip">S 級 ' + d.totalS + ' 件\n角色 ' + d.sChars + ' + 裝扮 ' + d.sEquips + '</span></div>';
+    if (d.totalA > 0) h += '<div class="bar-seg" style="width:' + Math.max(aPct,5) + '%;background:rgba(179,136,255,.3);color:var(--grade-a)">' + d.totalA + '<span class="tip">A 級 ' + d.totalA + ' 件\n角色 ' + d.aChars + ' + 裝扮 ' + d.aEquips + '</span></div>';
+    if (d.totalB > 0) h += '<div class="bar-seg" style="width:' + Math.max(bPct,5) + '%;background:rgba(68,138,255,.25);color:var(--grade-b)">' + d.totalB + '<span class="tip">B 級 ' + d.totalB + ' 件</span></div>';
+    h += '</div>';
+    h += '<div style="display:flex;gap:16px;font-size:.78em;color:var(--text-dim);flex-wrap:wrap">';
+    h += '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--grade-s);margin-right:4px;vertical-align:middle"></span>S 級 ' + d.totalS + '（' + sPct + '%）</span>';
+    h += '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--grade-a);margin-right:4px;vertical-align:middle"></span>A 級 ' + d.totalA + '（' + aPct + '%）</span>';
+    if (d.totalB > 0) h += '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--grade-b);margin-right:4px;vertical-align:middle"></span>B 級 ' + d.totalB + '（' + bPct + '%）</span>';
+    h += '</div></div>';
+    h += '<div class="chart-card"><h3>類型分布</h3>';
+    h += '<div style="display:flex;height:28px;margin-bottom:10px">';
+    var bChars = d.totalChars - d.sChars - d.aChars;
+    var bEquips = d.totalEquips - d.sEquips - d.aEquips;
+    if (d.totalChars > 0) h += '<div class="bar-seg" style="width:' + Math.max(charPct,5) + '%;background:rgba(29,233,182,.3);color:var(--teal)">' + d.totalChars + '<span class="tip">角色 ' + d.totalChars + ' 件\nS 級 ' + d.sChars + ' + A 級 ' + d.aChars + (bChars > 0 ? ' + B 級 ' + bChars : '') + '\n限定 ' + d.limitedChars + ' + 常駐 ' + d.stdChars + '</span></div>';
+    if (d.totalEquips > 0) h += '<div class="bar-seg" style="width:' + Math.max(equipPct,5) + '%;background:rgba(68,138,255,.25);color:var(--blue)">' + d.totalEquips + '<span class="tip">裝扮 ' + d.totalEquips + ' 件\nS 級 ' + d.sEquips + ' + A 級 ' + d.aEquips + (bEquips > 0 ? ' + B 級 ' + bEquips : '') + '</span></div>';
+    h += '</div>';
+    h += '<div style="display:flex;gap:16px;font-size:.78em;color:var(--text-dim);flex-wrap:wrap">';
+    h += '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--teal);margin-right:4px;vertical-align:middle"></span>角色 ' + d.totalChars + '（' + charPct + '%）</span>';
+    h += '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--blue);margin-right:4px;vertical-align:middle"></span>裝扮 ' + d.totalEquips + '（' + equipPct + '%）</span>';
+    h += '</div></div>';
+    h += '</div>';
+    h += '</div></div>';
+
+    // --- 2. 趨勢圖 ---
+    if (banners.length >= 2) {
+        h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">抽卡趨勢<span class="arrow" style="font-size:.7em">▼</span></div><div class="sec-body">';
+        h += '<div class="chart-wrap"><div style="height:320px"><canvas id="chartPulls"></canvas></div></div>';
+        h += '<div class="chart-wrap"><div style="height:320px"><canvas id="chartCost"></canvas></div></div>';
+        h += '</div></div>';
+    }
+
+    // --- 3. 歐非排行（僅限定） ---
+    var rankList = [];
+    banners.forEach(function(b) {
+        var bItemNames = {};
+        b.items.forEach(function(item) { bItemNames[item.n] = true; });
+        var rMaxPulls = sumFormula(b.cost.pulls);
+        b.pulls.forEach(function(p) {
+            if (bItemNames[p.n]) {
+                rankList.push({ n:p.n, grade:p.grade, type:p.type, at:p.at, totalPulls:rMaxPulls, banner:b.name });
+            }
+        });
+    });
+    if (rankList.length > 0) {
+        var sorted = rankList.slice().sort(function(a,b){
+            if (a.at !== b.at) return a.at - b.at;
+            var ga = a.grade === 'S' ? 0 : a.grade === 'A' ? 1 : 2;
+            var gb = b.grade === 'S' ? 0 : b.grade === 'A' ? 1 : 2;
+            return ga - gb;
+        });
+
+        h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">歐皇 vs 非洲 排行（限定 第幾抽出）<span class="arrow" style="font-size:.7em">▼</span></div><div class="sec-body">';
+
+        h += '<div style="margin-bottom:12px"><span style="color:var(--green);font-weight:700">最歐 TOP 10</span></div>';
+        h += '<table class="rank-tbl"><thead><tr><th>#</th><th>等級</th><th>類型</th><th>名稱</th><th>第幾抽出</th><th>卡池</th></tr></thead><tbody>';
+        sorted.slice(0, 10).forEach(function(c, i) {
+            h += '<tr><td>' + (i+1) + '</td>';
+            h += '<td><span class="grade-tag ' + gradeClass(c.grade) + '">' + c.grade + '</span></td>';
+            h += '<td>' + getTypeIcon(c.type) + '</td>';
+            h += '<td class="left pull-name ' + gradeRankClass(c.grade) + '">★ ' + c.n + '</td>';
+            h += '<td class="c-green">' + c.at + ' / ' + c.totalPulls + ' <span class="mob-br-wrap">抽</span></td>';
+            h += '<td class="c-dim">【' + c.banner + '】</td></tr>';
+        });
+        h += '</tbody></table>';
+
+        var sortedR = sorted.slice().reverse();
+        h += '<div style="margin:16px 0 12px"><span style="color:var(--red);font-weight:700">最非 TOP 10</span></div>';
+        h += '<table class="rank-tbl"><thead><tr><th>#</th><th>等級</th><th>類型</th><th>名稱</th><th>第幾抽出</th><th>卡池</th></tr></thead><tbody>';
+        sortedR.slice(0, 10).forEach(function(c, i) {
+            h += '<tr><td>' + (i+1) + '</td>';
+            h += '<td><span class="grade-tag ' + gradeClass(c.grade) + '">' + c.grade + '</span></td>';
+            h += '<td>' + getTypeIcon(c.type) + '</td>';
+            h += '<td class="left pull-name ' + gradeRankClass(c.grade) + '">★ ' + c.n + '</td>';
+            h += '<td class="c-red">' + c.at + ' / ' + c.totalPulls + ' <span class="mob-br-wrap">抽</span></td>';
+            h += '<td class="c-dim">【' + c.banner + '】</td></tr>';
+        });
+        h += '</tbody></table>';
+        h += '</div></div>';
+    }
+
+    // --- 4. 獲得紀錄（預設顯示10條，可展開） ---
+    var allTimelineItems = [];
+    for (var ti = banners.length - 1; ti >= 0; ti--) {
+        var tb = banners[ti];
+        var tbMaxPulls = sumFormula(tb.cost.pulls);
+        var tbItemNames = {};
+        tb.items.forEach(function(item) { tbItemNames[item.n] = true; });
+        tb.pulls.slice().sort(function(a,b){ return b.at - a.at; }).forEach(function(p) {
+            allTimelineItems.push({ p:p, tb:tb, tbMaxPulls:tbMaxPulls, isLtd:!!tbItemNames[p.n] });
+        });
+    }
+    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">獲得紀錄<span class="badge-count">' + allTimelineItems.length + ' 筆</span><span class="arrow" style="font-size:.7em">▼</span></div><div class="sec-body"><div class="timeline" id="timelineWrap">';
+    allTimelineItems.forEach(function(item, idx) {
+        var p = item.p, isS = p.grade === 'S', isLtd = item.isLtd;
+        var hidden = idx >= 10 ? ' style="display:none"' : '';
+        h += '<div class="timeline-item' + (isLtd ? ' ltd-item' : '') + (isS ? ' s-item' : '') + '" data-tl-idx="' + idx + '"' + hidden + '>';
+        h += '<span class="grade-tag ' + gradeClass(p.grade) + '">' + p.grade + '</span> ';
+        h += '<span class="type-tag ' + getTypeClass(p.type) + '">' + getTypeIcon(p.type) + ' ' + p.type + '</span> ';
+        var nameStyle = isLtd ? '' : 'color:var(--text-dim)';
+        h += '<span class="pull-name ' + gradeRankClass(p.grade) + '" style="margin-left:4px;' + nameStyle + '">' + (isLtd ? '★ ' : '') + p.n + '</span>';
+        h += '<span style="float:right;color:var(--text-dim);font-size:.8em">【' + item.tb.name + '】' + p.at + '/' + item.tbMaxPulls + '抽</span></div>';
+    });
+    h += '</div>';
+    if (allTimelineItems.length > 10) {
+        h += '<div id="tlMoreWrap" style="text-align:center;margin-top:12px"><button class="btn btn-accent" onclick="showMoreTimeline()">顯示更多（還有 ' + (allTimelineItems.length - 10) + ' 筆）</button></div>';
+    }
+    h += '</div></div>';
+
+    // --- 5. 卡池明細（預設收合） ---
+    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">卡池明細<span class="badge-count">' + d.bannerCount + ' 期</span><span class="arrow" style="font-size:.7em">▶</span></div><div class="sec-body" style="display:none">';
+    for (var bi = banners.length - 1; bi >= 0; bi--) {
+        var b = banners[bi];
+        h += '<div class="banner-card">';
+        h += '<div class="banner-hd"><div><span class="banner-name">【' + b.name + '】</span><span class="banner-featured">' + b.featured + '</span></div><span class="banner-date">' + b.date + '</span></div>';
+        h += '<div class="banner-items">';
+        b.items.forEach(function(item) {
+            var itemCls = item.grade === 'S' ? 'item-s' : item.grade === 'A' ? 'item-a' : 'item-b';
+            h += '<span class="item-tag ' + itemCls + '"><b>' + item.grade + '</b> ' + getTypeIcon(item.type) + ' ' + item.n + '</span>';
+        });
+        h += '</div>';
+        var bMaxPulls = sumFormula(b.cost.pulls);
+        var bDice = sumFormula(b.cost.dice);
+        var bStones = sumFormula(b.cost.stones);
+        if (b.pulls.length > 0) {
+            var bItemNames = {};
+            b.items.forEach(function(item) { bItemNames[item.n] = true; });
+            h += '<table class="pull-tbl"><thead><tr><th>#</th><th>等級</th><th>類型</th><th>名稱</th><th>第幾抽出</th></tr></thead><tbody>';
+            b.pulls.forEach(function(p, i) {
+                var isLtd = !!bItemNames[p.n];
+                var rowStyle = isLtd ? 'background:rgba(0,229,255,.035);border-left:4px solid var(--cyan)' : 'border-left:4px solid rgba(255,255,255,.1)';
+                var nameStyle = isLtd ? '' : 'color:var(--text-dim)';
+                h += '<tr style="' + rowStyle + '"><td>' + (i + 1) + '</td>';
+                h += '<td><span class="grade-tag ' + gradeClass(p.grade) + '">' + p.grade + '</span></td>';
+                h += '<td><span class="type-tag ' + getTypeClass(p.type) + '">' + getTypeIcon(p.type) + ' ' + p.type + '</span></td>';
+                h += '<td class="left pull-name ' + gradeRankClass(p.grade) + '" style="' + nameStyle + '">' + (isLtd ? '★ ' : '') + p.n + '</td>';
+                h += '<td><span class="pull-at">' + p.at + '</span> <span class="pull-batch">/ ' + bMaxPulls + ' 抽</span></td></tr>';
+            });
+            h += '</tbody></table>';
+        }
+        h += '<div class="cost-bar">';
+        var showFormula = function(formula, total) { return String(formula).indexOf('+') > -1 ? formula + '=' + total : '' + total; };
+        h += '<div class="cost-item"><span class="cost-label">抽數</span><span class="cost-val" style="color:var(--teal)">' + showFormula(b.cost.pulls, bMaxPulls) + ' 抽</span></div>';
+        h += '<div class="cost-item"><span class="cost-label">骰子</span><span class="cost-val dice">🎲 ' + showFormula(b.cost.dice, bDice) + '</span></div>';
+        h += '<div class="cost-item"><span class="cost-label">環石</span><span class="cost-val stones">💎 ' + showFormula(b.cost.stones, bStones) + '</span></div>';
+        h += '</div></div>';
+    }
+    h += '</div></div>';
+
+    h += '</div>'; // tabGacha
+
+    // ========== 管理後台分頁 ==========
+    h += '<div class="tab-page" id="tabAdmin"><div id="adminTabContent"></div></div>';
+
+    app.innerHTML = h;
+
+    // --- 繪製趨勢圖 ---
+    drawCharts();
+}
+
+function drawCharts() {
+    if (banners.length < 2) return;
+
+    var labels = banners.map(function(b) {
+        var n = b.name;
+        return n.length > 6 ? n.slice(0,6) + '…' : n;
+    });
+
+    // 每池資料：分限定/常駐
+    var pullsData = [];
+    var ltdCharsData = [], ltdEquipsData = [], stdCharsData = [];
+    var diceData = [], stonesData = [];
+    banners.forEach(function(b) {
+        pullsData.push(sumFormula(b.cost.pulls));
+        var bItemNames = {};
+        b.items.forEach(function(item) { bItemNames[item.n] = true; });
+        var lc = 0, le = 0, sc = 0;
+        b.pulls.forEach(function(p) {
+            var isLtd = !!bItemNames[p.n];
+            if (p.type === '角色') { if (isLtd) lc++; else sc++; }
+            else { if (isLtd) le++; }
+        });
+        ltdCharsData.push(lc);
+        ltdEquipsData.push(le);
+        stdCharsData.push(sc);
+        diceData.push(sumFormula(b.cost.dice));
+        stonesData.push(sumFormula(b.cost.stones));
+    });
+
+    // 圖1：每池獲得分布（堆疊）+ 抽數折線
+    var c1 = document.getElementById('chartPulls');
+    if (c1) {
+        new Chart(c1, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label:'限定角色', data:ltdCharsData, backgroundColor:'rgba(255,215,64,.4)', borderColor:'#ffd740', borderWidth:1, borderRadius:4, stack:'items', yAxisID:'y' },
+                    { label:'限定裝扮', data:ltdEquipsData, backgroundColor:'rgba(0,229,255,.35)', borderColor:'#00e5ff', borderWidth:1, borderRadius:4, stack:'items', yAxisID:'y' },
+                    { label:'常駐角色', data:stdCharsData, backgroundColor:'rgba(255,255,255,.12)', borderColor:'rgba(255,255,255,.3)', borderWidth:1, borderRadius:4, stack:'items', yAxisID:'y' },
+                    { label:'抽數', data:pullsData, type:'line', borderColor:'#b388ff', backgroundColor:'#b388ff', pointRadius:4, pointBackgroundColor:'#b388ff', tension:.3, yAxisID:'y1' }
+                ]
+            },
+            options: {
+                responsive:true, maintainAspectRatio:false,
+                plugins: { title:{ display:true, text:'每池獲得分布 & 抽數', color:'#80deea', font:{size:14} }, legend:{ labels:{color:'#8b8fa3'} } },
+                scales: {
+                    x:{ stacked:true, ticks:{color:'#666',maxRotation:45,font:{size:10}} },
+                    y:{ stacked:true, title:{display:true,text:'獲得數',color:'#00e5ff'}, ticks:{color:'#00e5ff',stepSize:1}, grid:{color:'rgba(255,255,255,.04)'} },
+                    y1:{ position:'right', title:{display:true,text:'抽數',color:'#b388ff'}, ticks:{color:'#b388ff'}, grid:{drawOnChartArea:false} }
+                }
+            }
+        });
+    }
+
+    // 圖2：骰子和環石分開Y軸
+    var cumDice = 0;
+    var cumDiceData = diceData.map(function(v){ cumDice += v; return cumDice; });
+    var cumStones = 0;
+    var cumStonesData = stonesData.map(function(v){ cumStones += v; return cumStones; });
+
+    var c2 = document.getElementById('chartCost');
+    if (c2) {
+        new Chart(c2, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label:'骰子', data:diceData, backgroundColor:'rgba(255,171,64,.4)', borderColor:'#ffab40', borderWidth:1, borderRadius:4, yAxisID:'y' },
+                    { label:'環石', data:stonesData, backgroundColor:'rgba(0,229,255,.3)', borderColor:'#00e5ff', borderWidth:1, borderRadius:4, yAxisID:'y1' },
+                    { label:'累計骰子', data:cumDiceData, type:'line', borderColor:'#fb923c', backgroundColor:'transparent', pointRadius:3, pointBackgroundColor:'#fb923c', tension:.3, yAxisID:'y' },
+                    { label:'累計環石', data:cumStonesData, type:'line', borderColor:'#1de9b6', backgroundColor:'transparent', pointRadius:3, pointBackgroundColor:'#1de9b6', tension:.3, borderDash:[5,3], yAxisID:'y1' }
+                ]
+            },
+            options: {
+                responsive:true, maintainAspectRatio:false,
+                plugins: { title:{ display:true, text:'花費趨勢（含累計）', color:'#80deea', font:{size:14} }, legend:{ labels:{color:'#8b8fa3'} } },
+                scales: {
+                    x:{ ticks:{color:'#666',maxRotation:45,font:{size:10}} },
+                    y:{ title:{display:true,text:'骰子',color:'#ffab40'}, ticks:{color:'#ffab40'}, grid:{color:'rgba(255,255,255,.04)'}, position:'left' },
+                    y1:{ title:{display:true,text:'環石',color:'#00e5ff'}, ticks:{color:'#00e5ff'}, grid:{drawOnChartArea:false}, position:'right' }
+                }
+            }
+        });
+    }
+}
+
+// Chart.js 全域設定
+Chart.defaults.responsive = true;
+Chart.defaults.maintainAspectRatio = false;
+
+// 視窗縮放時強制重繪所有圖表
+window.addEventListener('resize', function(){
+    Object.values(Chart.instances).forEach(function(chart){ chart.resize(); });
+});
+
+render();
+
+// ============================
+// 管理後台：初始化
+// ============================
+window._adminInitialized = false;
+
+function initAdminPanel() {
+    if (window._adminInitialized) return;
+    window._adminInitialized = true;
+
+    var ah = '';
+
+    // 登入畫面
+    ah += '<div id="adminLoginScreen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:40vh;gap:20px">';
+    ah += '<h2 style="font-size:2em;color:var(--cyan);letter-spacing:6px">管理後台</h2>';
+    ah += '<p style="color:var(--text-dim)">請輸入密碼以進入管理介面</p>';
+    ah += '<form onsubmit="event.preventDefault();doAdminLogin()" style="text-align:center">';
+    ah += '<input type="password" id="adminPwdInput" placeholder="請輸入密碼" autocomplete="current-password" style="width:300px;padding:12px 18px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:1.05em;text-align:center;outline:none;margin-bottom:12px"><br>';
+    ah += '<button type="submit" style="padding:12px 40px;border-radius:12px;border:1px solid var(--cyan);background:rgba(0,229,255,.1);color:var(--cyan);font-size:1.1em;cursor:pointer;letter-spacing:3px">進入</button>';
+    ah += '</form>';
+    ah += '<div id="adminLoginErr" style="color:var(--red);font-size:.9em;min-height:1.2em"></div>';
+    ah += '</div>';
+
+    // 管理主面板
+    ah += '<div id="adminMainPanel" style="display:none">';
+    ah += '<div style="text-align:center;margin-bottom:24px;padding:16px;background:linear-gradient(135deg,rgba(0,229,255,.06),rgba(29,233,182,.04));border:1px solid rgba(0,229,255,.15);border-radius:14px">';
+    ah += '<h2 style="font-size:1.4em;color:var(--cyan);letter-spacing:3px">管理後台</h2>';
+    ah += '<div style="color:var(--text-dim);font-size:.82em;margin-top:4px">新增 / 管理卡池資料</div>';
+    ah += '</div>';
+
+    // 現有資料
+    ah += '<div class="form-section"><h2>現有卡池資料（共 <span id="bannerCount">0</span> 期）</h2><div id="dataList" class="data-list"></div></div>';
+
+    // 新增卡池表單
+    ah += '<div class="form-section"><h2>新增卡池</h2>';
+    ah += '<div class="form-row"><div class="form-group" style="flex:2"><label>卡池名稱（【】裡的名字）</label><input type="text" id="fName" placeholder="例：久夢初醒時"></div>';
+    ah += '<div class="form-group"><label>主打角色</label><input type="text" id="fFeatured" placeholder="例：安魂曲"></div></div>';
+    ah += '<div class="form-row"><div class="form-group"><label>起始日期</label><input type="date" id="fDateFrom"></div>';
+    ah += '<div class="form-group"><label>結束日期</label><input type="date" id="fDateTo"></div></div>';
+
+    // 卡池內容物
+    ah += '<div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px"><label style="font-size:.9em;color:var(--text-dim);letter-spacing:1px">卡池內容物</label><button class="btn btn-accent" onclick="addItem()" style="font-size:.8em;padding:5px 14px">+ 新增</button></div>';
+    ah += '<div id="itemsList"></div>';
+
+    // 出卡紀錄
+    ah += '<div id="pullsSection"><div style="margin:16px 0 10px"><h2 style="margin:0;border:none;padding:0;font-size:1em;color:var(--cyan)">出卡紀錄</h2></div>';
+    ah += '<div id="pullsList"></div>';
+    ah += '<div style="text-align:center;margin-top:10px"><button class="btn btn-accent" onclick="addPull()">+ 新增一筆</button></div></div>';
+
+    // 花費紀錄
+    ah += '<div class="form-section" style="padding:16px;margin-top:16px"><h2 style="font-size:1em">花費紀錄</h2>';
+    ah += '<div id="costRounds"></div>';
+    ah += '<div style="text-align:center;margin-top:10px"><button class="btn btn-accent" onclick="addCostRound()" style="font-size:.8em;padding:5px 14px">+ 新增一輪</button></div>';
+    ah += '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:.85em;color:var(--text-dim)">合計：<span id="costSummary" style="color:var(--text)"></span></div>';
+    ah += '</div>';
+
+    // 操作按鈕
+    ah += '<div class="btn-row" style="margin-top:20px;justify-content:center">';
+    ah += '<button class="btn btn-green" onclick="generateCode()" style="font-size:1em;padding:10px 30px">產生程式碼</button>';
+    ah += '<button class="btn btn-accent" onclick="saveToData()" style="font-size:1em;padding:10px 30px">儲存到 NTE_data.js</button>';
+    ah += '<button class="btn btn-danger" onclick="clearForm()">清空表單</button>';
+    ah += '</div></div>';
+
+    // 程式碼預覽
+    ah += '<div class="form-section" id="previewSection" style="display:none"><h2>產生的程式碼</h2>';
+    ah += '<div class="preview-box" id="previewBox" style="position:relative"><button class="copy-btn" onclick="copyCode()">複製</button><pre id="codeOutput"></pre></div>';
+    ah += '<p style="color:var(--text-dim);font-size:.78em;margin-top:10px">可以直接複製這段程式碼，貼到 NTE_data.js 的 banners 陣列最後面（ ]; 之前）。<br>或點「儲存到 NTE_data.js」自動附加。</p></div>';
+
+    ah += '</div>'; // adminMainPanel
+
+    document.getElementById('adminTabContent').innerHTML = ah;
+
+    if (sessionStorage.getItem('nte_admin_auth') === '1') {
+        document.getElementById('adminLoginScreen').style.display = 'none';
+        document.getElementById('adminMainPanel').style.display = 'block';
+        adminAfterLogin();
+    }
+}
+
+// ============================
+// 管理後台：密碼驗證
+// ============================
+var ADMIN_PWD_ENCODED = 'bnRl';
+
+function doAdminLogin() {
+    var pwd = document.getElementById('adminPwdInput').value;
+    if (btoa(pwd) === ADMIN_PWD_ENCODED) {
+        document.getElementById('adminLoginScreen').style.display = 'none';
+        document.getElementById('adminMainPanel').style.display = 'block';
+        sessionStorage.setItem('nte_admin_auth', '1');
+        adminAfterLogin();
+    } else {
+        document.getElementById('adminLoginErr').textContent = '密碼錯誤';
+    }
+}
+
+function adminAfterLogin() {
+    renderAdminDataList();
+    addItem();
+    addPull();
+    addCostRound();
+}
+
+// ============================
+// Toast 提示
+// ============================
+function showToast(msg, isError) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (isError ? ' error' : '');
+    t.style.display = 'block';
+    requestAnimationFrame(function(){ t.classList.add('show'); });
+    setTimeout(function(){
+        t.classList.remove('show');
+        setTimeout(function(){ t.style.display = 'none'; }, 300);
+    }, 3000);
+}
+
+// ============================
+// 必填欄位跳轉 + 閃爍
+// ============================
+function focusField(id, msg) {
+    var el = document.getElementById(id);
+    focusEl(el, msg);
+}
+function focusEl(el, msg) {
+    showToast(msg, true);
+    if (!el) return;
+    el.scrollIntoView({behavior:'smooth', block:'center'});
+    el.focus();
+    el.style.transition = 'box-shadow .2s';
+    el.style.boxShadow = '0 0 0 3px rgba(255,82,82,.5)';
+    setTimeout(function(){ el.style.boxShadow = ''; }, 3000);
+}
+
+// ============================
+// 已填欄位高亮
+// ============================
+function checkHasValue(el) {
+    if (el.type === 'checkbox') return;
+    if (el.value && el.value.trim() !== '' && el.value !== '0') el.classList.add('has-value');
+    else el.classList.remove('has-value');
+}
+document.addEventListener('input', function(e) {
+    if (e.target.matches('.form-group input, .form-group select, .form-group textarea')) checkHasValue(e.target);
+});
+document.addEventListener('change', function(e) {
+    if (e.target.matches('.form-group input, .form-group select, .form-group textarea')) checkHasValue(e.target);
+});
+
+// ============================
+// 日期框
+// ============================
+document.addEventListener('click', function(e) {
+    if (e.target.matches('#tabAdmin input[type="date"]')) {
+        if (!e.target.value) {
+            var now = new Date();
+            var pad = function(n){ return n < 10 ? '0'+n : n; };
+            e.target.value = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+            checkHasValue(e.target);
+        }
+        e.target.showPicker();
+    }
+});
+document.addEventListener('keydown', function(e) {
+    if (e.target.matches('#tabAdmin input[type="date"]')) e.preventDefault();
+});
+document.addEventListener('change', function(e) {
+    var from = document.getElementById('fDateFrom');
+    var to = document.getElementById('fDateTo');
+    if (!from || !to) return;
+    if (e.target === from && to.value && from.value > to.value) { to.value = from.value; checkHasValue(to); }
+    if (e.target === to && from.value && to.value < from.value) { from.value = to.value; checkHasValue(from); }
+});
+
+// ============================
+// 卡池內容物管理
+// ============================
+var gradeOptions = '<option value="S">S 級</option><option value="A">A 級</option><option value="B">B 級</option>';
+var typeOptions = '<option value="角色">👤 角色</option><option value="滑翔翼">🪂 滑翔翼</option><option value="塗裝">🎨 塗裝</option><option value="時裝">👗 時裝</option>';
+
+function addItem() {
+    var div = document.createElement('div');
+    div.className = 'card-entry';
+    div.innerHTML = '<select class="itemGrade" onchange="refreshQuickBtns()"><option value="" disabled selected hidden>等級</option>' + gradeOptions + '</select>'
+        + '<select class="itemType" onchange="refreshQuickBtns()"><option value="" disabled selected hidden>類型</option>' + typeOptions + '</select>'
+        + '<input type="text" class="itemName" placeholder="名稱（例：安魂曲）" oninput="refreshQuickBtns()">'
+        + '<button type="button" class="card-del" onclick="removeItem(this)">✕</button>';
+    document.getElementById('itemsList').appendChild(div);
+    updateItemDeleteBtns();
+}
+
+function removeItem(btn) {
+    var entries = document.querySelectorAll('#itemsList .card-entry');
+    if (entries.length <= 1) { showToast('至少要保留一項', true); return; }
+    btn.parentElement.remove();
+    updateItemDeleteBtns();
+    refreshQuickBtns();
+}
+
+function refreshQuickBtns() {
+    var btnsHtml = getItemQuickBtns();
+    document.querySelectorAll('#pullsList .pull-entry').forEach(function(entry) {
+        var existing = entry.querySelector('.quick-select-row');
+        if (existing) existing.remove();
+        if (btnsHtml) {
+            var temp = document.createElement('div');
+            temp.innerHTML = btnsHtml;
+            var row = temp.firstChild;
+            row.classList.add('quick-select-row');
+            var firstFormRow = entry.querySelectorAll('.form-row')[0];
+            if (firstFormRow && firstFormRow.nextSibling) {
+                entry.insertBefore(row, firstFormRow.nextSibling);
+            }
+        }
+    });
+}
+
+function updateItemDeleteBtns() {
+    var entries = document.querySelectorAll('#itemsList .card-entry');
+    entries.forEach(function(entry) {
+        entry.querySelector('.card-del').style.display = entries.length <= 1 ? 'none' : '';
+    });
+}
+
+// ============================
+// 現有資料列表
+// ============================
+var dataListShown = 5;
+
+function renderAdminDataList() {
+    if (typeof banners === 'undefined') return;
+    var el = document.getElementById('dataList');
+    if (!el) return;
+    document.getElementById('bannerCount').textContent = banners.length;
+    var h = '', count = 0;
+    for (var i = banners.length - 1; i >= 0; i--) {
+        count++;
+        var hidden = count > dataListShown ? ' style="display:none"' : '';
+        var b = banners[i];
+        var pullCount = b.pulls ? b.pulls.length : 0;
+        var bDice = b.cost ? sumFormula(b.cost.dice) : 0;
+        var bStones = b.cost ? sumFormula(b.cost.stones) : 0;
+        h += '<div class="data-item" data-idx="' + count + '"' + hidden + '>'
+            + '<div><span class="name">' + (i+1) + '. 【' + b.name + '】</span>'
+            + '<span class="meta" style="margin-left:8px">' + b.featured + '</span></div>'
+            + '<div class="meta">' + b.date + ' | ' + pullCount + ' 筆 | 🎲' + bDice + ' 💎' + bStones.toLocaleString() + '</div></div>';
+    }
+    if (banners.length > 5) {
+        h += '<div id="showMoreWrap" style="text-align:center;margin-top:12px;display:flex;gap:10px;justify-content:center">';
+        if (banners.length > dataListShown) h += '<button class="btn btn-accent" onclick="showMoreData()">顯示更多（還有 ' + (banners.length - dataListShown) + ' 筆）</button>';
+        if (dataListShown > 5) h += '<button class="btn" onclick="collapseData()">收合</button>';
+        h += '</div>';
+    }
+    el.innerHTML = h;
+}
+
+function showMoreData() {
+    dataListShown = Math.min(dataListShown + 5, banners.length);
+    document.querySelectorAll('#dataList .data-item').forEach(function(item) {
+        item.style.display = parseInt(item.dataset.idx) <= dataListShown ? '' : 'none';
+    });
+    updateDataButtons();
+}
+function collapseData() {
+    dataListShown = 5;
+    document.querySelectorAll('#dataList .data-item').forEach(function(item) {
+        item.style.display = parseInt(item.dataset.idx) <= 5 ? '' : 'none';
+    });
+    updateDataButtons();
+}
+function updateDataButtons() {
+    var wrap = document.getElementById('showMoreWrap');
+    if (!wrap) return;
+    var left = banners.length - dataListShown;
+    var h = '';
+    if (left > 0) h += '<button class="btn btn-accent" onclick="showMoreData()">顯示更多（還有 ' + left + ' 筆）</button>';
+    if (dataListShown > 5) h += '<button class="btn" onclick="collapseData()">收合</button>';
+    wrap.innerHTML = h;
+}
+
+// ============================
+// 出卡紀錄管理
+// ============================
+var ntePullCount = 0;
+
+function getItemQuickBtns() {
+    var items = [];
+    document.querySelectorAll('#itemsList .card-entry').forEach(function(entry) {
+        var grade = entry.querySelector('.itemGrade').value;
+        var type = entry.querySelector('.itemType').value;
+        var n = entry.querySelector('.itemName').value.trim();
+        if (grade && type && n) items.push({grade:grade, type:type, n:n});
+    });
+    if (items.length === 0) return '';
+    var h = '<div class="form-row quick-select-row" style="margin-top:4px;gap:6px;flex-wrap:wrap"><span style="font-size:.78em;color:var(--text-dim)">快速選擇：</span>';
+    items.forEach(function(item) {
+        var cls = item.grade === 'S' ? 'item-s' : item.grade === 'A' ? 'item-a' : 'item-b';
+        h += '<span class="item-tag ' + cls + '" style="cursor:pointer" onclick="fillPullFromItem(this,\'' + item.grade + '\',\'' + item.type + '\',\'' + item.n + '\')"><b>' + item.grade + '</b> ' + getTypeIcon(item.type) + ' ' + item.n + '</span>';
+    });
+    h += '</div>';
+    return h;
+}
+
+function fillPullFromItem(el, grade, type, name) {
+    var entry = el.closest('.pull-entry');
+    var gradeSel = entry.querySelector('.pGrade');
+    var typeSel = entry.querySelector('.pType');
+    var nameInput = entry.querySelector('.pName');
+    gradeSel.value = grade; checkHasValue(gradeSel);
+    typeSel.value = type; checkHasValue(typeSel);
+    nameInput.value = name; checkHasValue(nameInput);
+}
+
+function addPull() {
+    var prevAt = 0;
+    var lastEntry = document.querySelector('#pullsList .pull-entry:last-child');
+    if (lastEntry) {
+        prevAt = parseInt(lastEntry.querySelector('.pAt').value) || 0;
+    }
+    ntePullCount++;
+    var displayNum = document.querySelectorAll('#pullsList .pull-entry').length + 1;
+    var div = document.createElement('div');
+    div.className = 'pull-entry';
+    div.id = 'pull_' + ntePullCount;
+    div.innerHTML = '<span class="pull-num">#' + displayNum + '</span>'
+        + '<div class="form-row"><div class="form-group"><label>等級</label>'
+        + '<select class="pGrade" onchange="checkHasValue(this)"><option value="" disabled selected hidden>— 選擇 —</option>' + gradeOptions + '</select></div>'
+        + '<div class="form-group"><label>類型</label>'
+        + '<select class="pType" onchange="checkHasValue(this)"><option value="" disabled selected hidden>— 選擇 —</option>' + typeOptions + '</select></div>'
+        + '<div class="form-group" style="flex:2"><label>名稱</label><input type="text" class="pName" placeholder="例：安魂曲"></div></div>'
+        + getItemQuickBtns()
+        + '<div class="form-row" style="gap:10px">'
+        + '<div class="pull-cell"><span class="pull-cell-tag">第幾抽出</span><div class="pull-qty-row"><button type="button" class="qty-btn minus" onclick="pullQtyChange(this,\'pAt\',-1)">−</button><input type="number" class="pAt" value="' + prevAt + '" min="0" oninput="sanitizeNum(this)"' + (prevAt > 0 ? ' class="has-value"' : '') + '><button type="button" class="qty-btn plus" onclick="pullQtyChange(this,\'pAt\',1)">+</button></div><span class="pull-cell-unit">每次 ±1</span></div>'
+        + '</div>'
+        + '<div style="text-align:right;margin-top:6px"><button class="btn btn-danger" onclick="removePull(' + ntePullCount + ')" style="font-size:.75em;padding:4px 12px">刪除此筆</button></div>';
+    document.getElementById('pullsList').appendChild(div);
+    updatePullDeleteBtns();
+}
+
+function removePull(id) {
+    var el = document.getElementById('pull_' + id);
+    if (el) el.remove();
+    var remaining = document.querySelectorAll('#pullsList .pull-entry');
+    remaining.forEach(function(entry, i) { entry.querySelector('.pull-num').textContent = '#' + (i + 1); });
+    updatePullDeleteBtns();
+}
+
+function updatePullDeleteBtns() {
+    var entries = document.querySelectorAll('#pullsList .pull-entry');
+    entries.forEach(function(entry) {
+        entry.querySelector('.btn-danger').style.display = entries.length <= 1 ? 'none' : '';
+    });
+}
+
+// ============================
+// 加減按鈕
+// ============================
+function sanitizeNum(el) {
+    el.value = el.value.replace(/[^0-9]/g, '');
+    var val = parseInt(el.value) || 0;
+    if (val < 0) val = 0;
+    el.value = val;
+    el.classList.toggle('has-value', val > 0);
+}
+
+function pullQtyChange(btn, cls, delta) {
+    var row = btn.closest('.pull-qty-row');
+    var input = row.querySelector('.' + cls);
+    var val = (parseInt(input.value) || 0) + delta;
+    if (val < 0) val = 0;
+    input.value = val;
+    input.classList.toggle('has-value', val > 0);
+}
+
+// ============================
+// 花費輪次管理
+// ============================
+var costRoundCount = 0;
+
+function addCostRound() {
+    costRoundCount++;
+    var roundNum = document.querySelectorAll('#costRounds .cost-round').length + 1;
+    var div = document.createElement('div');
+    div.className = 'cost-round';
+    div.id = 'cr_' + costRoundCount;
+    div.style.cssText = 'background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:10px;padding:12px;margin-bottom:8px;position:relative';
+    div.innerHTML = '<span style="font-size:.8em;color:var(--cyan);font-weight:600">第 ' + roundNum + ' 輪</span>'
+        + '<div class="form-row" style="margin-top:8px;gap:10px">'
+        + '<div class="pull-cell"><span class="pull-cell-tag">抽數</span><div class="pull-qty-row"><button type="button" class="qty-btn minus" onclick="crChange(this,\'crPulls\',-10)">−</button><input type="number" class="crPulls has-value" value="10" min="0" oninput="sanitizeNum(this);updateCostSummary()"><button type="button" class="qty-btn plus" onclick="crChange(this,\'crPulls\',10)">+</button></div><span class="pull-cell-unit">每次 ±10</span></div>'
+        + '<div class="pull-cell"><span class="pull-cell-tag">骰子 🎲</span><div class="pull-qty-row"><button type="button" class="qty-btn minus" onclick="crChange(this,\'crDice\',-1)">−</button><input type="number" class="crDice has-value" value="10" min="0" oninput="sanitizeNum(this);updateCostSummary()"><button type="button" class="qty-btn plus" onclick="crChange(this,\'crDice\',1)">+</button></div><span class="pull-cell-unit">每次 ±1</span></div>'
+        + '<div class="pull-cell"><span class="pull-cell-tag">環石 💎</span><div class="pull-qty-row"><button type="button" class="qty-btn minus" onclick="crChange(this,\'crStones\',-160)">−</button><input type="number" class="crStones" value="0" min="0" oninput="sanitizeNum(this);updateCostSummary()"><button type="button" class="qty-btn plus" onclick="crChange(this,\'crStones\',160)">+</button></div><span class="pull-cell-unit">每次 ±160</span></div>'
+        + '</div>'
+        + '<div style="text-align:right;margin-top:4px"><button class="btn btn-danger" onclick="removeCostRound(' + costRoundCount + ')" style="font-size:.7em;padding:3px 10px">刪除</button></div>';
+    document.getElementById('costRounds').appendChild(div);
+    updateCostRoundDeleteBtns();
+    updateCostSummary();
+}
+
+function removeCostRound(id) {
+    var el = document.getElementById('cr_' + id);
+    if (el) el.remove();
+    var rounds = document.querySelectorAll('#costRounds .cost-round');
+    rounds.forEach(function(r, i) {
+        r.querySelector('span').textContent = '第 ' + (i + 1) + ' 輪';
+    });
+    updateCostRoundDeleteBtns();
+    updateCostSummary();
+}
+
+function updateCostRoundDeleteBtns() {
+    var rounds = document.querySelectorAll('#costRounds .cost-round');
+    rounds.forEach(function(r) {
+        var btn = r.querySelector('.btn-danger');
+        btn.style.display = rounds.length <= 1 ? 'none' : '';
+    });
+}
+
+function crChange(btn, cls, delta) {
+    var row = btn.closest('.pull-qty-row');
+    var input = row.querySelector('.' + cls);
+    var val = (parseInt(input.value) || 0) + delta;
+    if (val < 0) val = 0;
+    input.value = val;
+    input.classList.toggle('has-value', val > 0);
+    updateCostSummary();
+}
+
+function getCostFormulas() {
+    var pulls = [], dice = [], stones = [];
+    document.querySelectorAll('#costRounds .cost-round').forEach(function(r) {
+        pulls.push(parseInt(r.querySelector('.crPulls').value) || 0);
+        dice.push(parseInt(r.querySelector('.crDice').value) || 0);
+        stones.push(parseInt(r.querySelector('.crStones').value) || 0);
+    });
+    // 累計抽數
+    var cumPulls = [];
+    var sum = 0;
+    pulls.forEach(function(v) { sum += v; cumPulls.push(sum); });
+    return {
+        pulls: cumPulls.join('+'),
+        dice: dice.join('+'),
+        stones: stones.join('+'),
+        totalPulls: sum,
+        totalDice: dice.reduce(function(s,v){return s+v;},0),
+        totalStones: stones.reduce(function(s,v){return s+v;},0)
+    };
+}
+
+function updateCostSummary() {
+    var c = getCostFormulas();
+    var el = document.getElementById('costSummary');
+    if (el) {
+        var showF = function(formula, total) { return formula.indexOf('+') > -1 ? formula + '=' + total : '' + total; };
+        el.innerHTML = '抽數 <b style="color:var(--teal)">' + showF(c.pulls, c.totalPulls) + '</b>　骰子 <b style="color:var(--orange)">' + showF(c.dice, c.totalDice) + '</b>　環石 <b style="color:var(--cyan)">' + showF(c.stones, c.totalStones) + '</b>';
+    }
+}
+
+// ============================
+// 產生程式碼
+// ============================
+function fmtDate(isoStr) {
+    if (!isoStr) return '';
+    var dParts = isoStr.split('-');
+    return dParts[0] + '/' + parseInt(dParts[1]) + '/' + parseInt(dParts[2]);
+}
+function shortDate(isoStr) {
+    if (!isoStr) return '';
+    var dParts = isoStr.split('-');
+    return parseInt(dParts[1]) + '/' + parseInt(dParts[2]);
+}
+
+function buildBannerObj() {
+    var name = document.getElementById('fName').value.trim();
+    var featured = document.getElementById('fFeatured').value.trim();
+    var dateFrom = document.getElementById('fDateFrom').value;
+    var dateTo = document.getElementById('fDateTo').value;
+
+    if (!name) { focusField('fName', '請填寫卡池名稱'); return null; }
+    if (!featured) { focusField('fFeatured', '請填寫主打角色'); return null; }
+    if (!dateFrom) { focusField('fDateFrom', '請填寫起始日期'); return null; }
+    if (!dateTo) { focusField('fDateTo', '請填寫結束日期'); return null; }
+
+    // 內容物
+    var itemEntries = document.querySelectorAll('#itemsList .card-entry');
+    var items = [];
+    var hasItemError = false;
+    itemEntries.forEach(function(entry) {
+        if (hasItemError) return;
+        var grade = entry.querySelector('.itemGrade').value;
+        var type = entry.querySelector('.itemType').value;
+        var n = entry.querySelector('.itemName').value.trim();
+        if (grade && type && n) items.push({n:n, grade:grade, type:type});
+        else if (grade || type || n) { focusEl(entry.querySelector('.itemName'), '內容物資料不完整'); hasItemError = true; }
+    });
+    if (hasItemError) return null;
+    if (items.length === 0) { showToast('請至少新增一項卡池內容物', true); return null; }
+
+    // 出卡紀錄
+    var pullEntries = document.querySelectorAll('#pullsList .pull-entry');
+    var pulls = [];
+    var hasPullError = false;
+    pullEntries.forEach(function(entry) {
+        if (hasPullError) return;
+        var grade = entry.querySelector('.pGrade').value;
+        var type = entry.querySelector('.pType').value;
+        var n = entry.querySelector('.pName').value.trim();
+        var at = parseInt(entry.querySelector('.pAt').value) || 0;
+        if (!grade && !type && !n && !at) return; // 空行跳過
+        if (!grade) { focusEl(entry.querySelector('.pGrade'), '出卡紀錄缺少等級'); hasPullError = true; return; }
+        if (!type) { focusEl(entry.querySelector('.pType'), '出卡紀錄缺少類型'); hasPullError = true; return; }
+        if (!n) { focusEl(entry.querySelector('.pName'), '出卡紀錄缺少名稱'); hasPullError = true; return; }
+        if (!at) { focusEl(entry.querySelector('.pAt'), '「' + n + '」的第幾抽出不能是 0'); hasPullError = true; return; }
+        pulls.push({n:n, grade:grade, type:type, at:at});
+    });
+    if (hasPullError) return null;
+    if (pulls.length === 0) { showToast('請至少填寫一筆出卡紀錄', true); return null; }
+
+    // 花費
+    var costData = getCostFormulas();
+    var cPulls = costData.pulls || '0';
+    var cDice = costData.dice || '0';
+    var cStones = costData.stones || '0';
+
+    var fromFmt = fmtDate(dateFrom);
+    var toShort = shortDate(dateTo);
+    var fy = dateFrom.split('-')[0], ty = dateTo.split('-')[0];
+    var dateStr = fy === ty ? fromFmt + '-' + toShort : fromFmt + '-' + fmtDate(dateTo);
+
+    return {
+        date: dateStr, name: name, featured: featured,
+        items: items, pulls: pulls,
+        cost: { pulls:cPulls, dice:cDice, stones:cStones }
+    };
+}
+
+function objToCode(obj) {
+    if (!obj) return '';
+    var lines = ['  {'];
+    lines.push("    date:'" + obj.date + "', name:'" + obj.name + "', featured:'" + obj.featured + "',");
+    lines.push('    items:[');
+    obj.items.forEach(function(item) {
+        lines.push("      {n:'" + item.n + "', grade:'" + item.grade + "', type:'" + item.type + "'},");
+    });
+    lines.push('    ],');
+    lines.push('    pulls:[');
+    obj.pulls.forEach(function(p) {
+        lines.push("      {n:'" + p.n + "', grade:'" + p.grade + "', type:'" + p.type + "', at:" + p.at + "},");
+    });
+    lines.push('    ],');
+    lines.push("    cost:{ pulls:'" + obj.cost.pulls + "', dice:'" + obj.cost.dice + "', stones:'" + obj.cost.stones + "' },");
+    lines.push('  },');
+    return lines.join('\n');
+}
+
+function generateCode() {
+    var obj = buildBannerObj();
+    if (!obj) return;
+    document.getElementById('codeOutput').textContent = objToCode(obj);
+    document.getElementById('previewSection').style.display = 'block';
+    document.getElementById('previewSection').scrollIntoView({behavior:'smooth'});
+    showToast('程式碼已產生');
+}
+
+// ============================
+// 儲存到 NTE_data.js
+// ============================
+async function saveToData() {
+    var obj = buildBannerObj();
+    if (!obj) return;
+    var code = objToCode(obj);
+    try {
+        var resp = await fetch('NTE_data.js?' + Date.now());
+        var content = await resp.text();
+        var lastBracket = content.lastIndexOf('];');
+        if (lastBracket === -1) { showToast('NTE_data.js 格式異常，找不到 ];', true); return; }
+        var newContent = content.substring(0, lastBracket) + code + '\n' + content.substring(lastBracket);
+        var blob = new Blob([newContent], {type:'text/javascript;charset=utf-8'});
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'NTE_data.js';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast('已下載更新後的 NTE_data.js，請替換原檔案');
+    } catch(e) {
+        showToast('將以下載方式提供更新的 NTE_data.js');
+        document.getElementById('codeOutput').textContent = code;
+        document.getElementById('previewSection').style.display = 'block';
+        document.getElementById('previewSection').scrollIntoView({behavior:'smooth'});
+    }
+}
+
+// ============================
+// 複製 & 清空
+// ============================
+function copyCode() {
+    var code = document.getElementById('codeOutput').textContent;
+    try {
+        var ta = document.createElement('textarea');
+        ta.value = code; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        document.execCommand('copy'); ta.remove();
+        showToast('已複製到剪貼簿');
+    } catch(e) { showToast('複製失敗，請手動選取複製', true); }
+}
+
+function clearForm() {
+    document.getElementById('fName').value = '';
+    document.getElementById('fFeatured').value = '';
+    document.getElementById('fDateFrom').value = '';
+    document.getElementById('fDateTo').value = '';
+    document.getElementById('itemsList').innerHTML = '';
+    addItem();
+    document.getElementById('pullsList').innerHTML = '';
+    ntePullCount = 0;
+    addPull();
+    document.getElementById('costRounds').innerHTML = '';
+    costRoundCount = 0;
+    addCostRound();
+    document.getElementById('previewSection').style.display = 'none';
+    document.querySelectorAll('.has-value').forEach(function(el){ el.classList.remove('has-value'); });
+    showToast('表單已清空');
+}
+
+// ============================
+// 獲得紀錄：展開/收合
+// ============================
+var tlShown = 10;
+
+function showMoreTimeline() {
+    var items = document.querySelectorAll('#timelineWrap .timeline-item');
+    var total = items.length;
+    tlShown = Math.min(tlShown + 10, total);
+    items.forEach(function(item) {
+        var idx = parseInt(item.dataset.tlIdx);
+        item.style.display = idx < tlShown ? '' : 'none';
+    });
+    updateTlButtons(total);
+}
+
+function collapseTimeline() {
+    tlShown = 10;
+    var items = document.querySelectorAll('#timelineWrap .timeline-item');
+    items.forEach(function(item) {
+        var idx = parseInt(item.dataset.tlIdx);
+        item.style.display = idx < 10 ? '' : 'none';
+    });
+    updateTlButtons(items.length);
+}
+
+function updateTlButtons(total) {
+    var wrap = document.getElementById('tlMoreWrap');
+    if (!wrap) return;
+    var left = total - tlShown;
+    var h = '';
+    if (left > 0) h += '<button class="btn btn-accent" onclick="showMoreTimeline()">顯示更多（還有 ' + left + ' 筆）</button>';
+    if (tlShown > 10) h += ' <button class="btn" onclick="collapseTimeline()">收合</button>';
+    wrap.innerHTML = h;
+}
+
+// ============================
+// 回到頂端
+// ============================
+var btnTop = document.getElementById('btnTop');
+window.addEventListener('scroll', function() {
+    btnTop.classList.toggle('show', window.scrollY > 400);
+});
+btnTop.addEventListener('click', function() {
+    window.scrollTo({top:0, behavior:'smooth'});
+});
+</script>
+</body>
+</html>
