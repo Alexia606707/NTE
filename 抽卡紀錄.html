@@ -559,6 +559,147 @@
         }
         .card-entry .card-del:hover { opacity:1; text-shadow:0 0 8px rgba(255,82,82,.5); }
 
+        /* ===== 特殊活動：盲盒 ===== */
+        .blindbox-event {
+            background: linear-gradient(135deg, rgba(255,171,64,.04), rgba(255,82,82,.02));
+            border:1px solid rgba(255,171,64,.15);
+            border-radius:14px; padding:22px 24px; margin-bottom:20px;
+            position:relative; overflow:hidden;
+        }
+        .blindbox-event::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:2px;
+            background: linear-gradient(90deg, transparent, var(--orange), var(--red), var(--orange), transparent);
+            background-size:200% auto;
+            animation: neonBorder 3s linear infinite;
+        }
+        .blindbox-event .event-header {
+            display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;
+            margin-bottom:16px;
+        }
+        .blindbox-event .event-name {
+            font-size:1.3em; font-weight:700; color:var(--orange); letter-spacing:3px;
+            text-shadow:0 0 15px rgba(255,171,64,.4);
+        }
+        .blindbox-event .event-date {
+            font-size:.8em; color:var(--text-dim);
+            background:rgba(255,171,64,.08); padding:4px 14px; border-radius:20px;
+            border:1px solid rgba(255,171,64,.15);
+        }
+        .blindbox-event .event-desc {
+            font-size:.85em; color:var(--text-dim); margin-bottom:18px;
+            line-height:1.6; padding:10px 14px;
+            background:rgba(255,171,64,.03); border-radius:8px;
+            border-left:3px solid rgba(255,171,64,.3);
+        }
+        .blindbox-grid {
+            display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr));
+            gap:10px; margin-bottom:20px;
+        }
+        .blindbox-cell {
+            background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.06);
+            border-radius:10px; padding:12px 10px; text-align:center;
+            transition:all .3s; position:relative; cursor:default;
+        }
+        .blindbox-cell.opened {
+            border-color:rgba(0,229,255,.2);
+            background: linear-gradient(135deg, rgba(0,229,255,.06), rgba(29,233,182,.03));
+        }
+        .blindbox-cell.opened::after {
+            content:'✓'; position:absolute; top:6px; right:8px;
+            font-size:.7em; color:var(--teal);
+            text-shadow:0 0 6px rgba(29,233,182,.5);
+        }
+        .blindbox-cell.unopened {
+            border-color:rgba(255,255,255,.08);
+            background: repeating-linear-gradient(45deg, rgba(255,255,255,.01), rgba(255,255,255,.01) 4px, transparent 4px, transparent 8px);
+            opacity:.6;
+        }
+        .blindbox-cell .box-num {
+            font-size:.7em; color:var(--text-dim); margin-bottom:4px; letter-spacing:1px;
+        }
+        .blindbox-cell .box-name {
+            font-size:.82em; font-weight:600; margin-bottom:4px; line-height:1.3;
+        }
+        .blindbox-cell .box-name.s-rank { color:var(--grade-s); text-shadow:0 0 8px rgba(255,215,64,.4); }
+        .blindbox-cell .box-name.a-rank { color:var(--grade-a); text-shadow:0 0 6px rgba(179,136,255,.3); }
+        .blindbox-cell .box-name.b-rank { color:var(--grade-b); }
+        .blindbox-cell .box-order {
+            font-size:.7em; color:var(--teal); margin-top:4px;
+            text-shadow:0 0 4px rgba(29,233,182,.3);
+        }
+        .blindbox-cell .box-unknown {
+            font-size:1.5em; color:rgba(255,255,255,.15); margin:8px 0;
+        }
+        .price-table {
+            width:100%; border-collapse:separate; border-spacing:0;
+            border-radius:10px; overflow:hidden;
+            border:1px solid rgba(255,171,64,.12); margin-bottom:14px;
+            box-shadow:0 0 15px rgba(255,171,64,.03);
+        }
+        .price-table th {
+            background:linear-gradient(90deg, rgba(255,171,64,.1), rgba(255,82,82,.05));
+            padding:8px 10px; font-size:.78em;
+            color:var(--orange); letter-spacing:1px; text-align:center;
+            border-bottom:1px solid rgba(255,171,64,.12);
+        }
+        .price-table td {
+            padding:6px 8px; font-size:.82em; text-align:center;
+            border-bottom:1px solid rgba(255,255,255,.02);
+        }
+        .price-table tr:last-child td { border:none; }
+        .price-table tr:hover td { background:rgba(255,171,64,.04); }
+        .price-table .used-row { background:rgba(0,229,255,.04); }
+        .price-table .current-row { background:rgba(255,171,64,.08); border-left:3px solid var(--orange); }
+        .event-progress {
+            display:flex; align-items:center; gap:12px; margin-bottom:16px;
+            font-size:.9em;
+        }
+        .event-progress .prog-bar {
+            flex:1; height:22px; background:rgba(255,255,255,.05);
+            border-radius:11px; overflow:hidden; position:relative;
+            border:1px solid rgba(255,171,64,.1);
+        }
+        .event-progress .prog-fill {
+            height:100%; border-radius:11px;
+            background: linear-gradient(90deg, var(--orange), var(--red));
+            transition: width .5s ease;
+            box-shadow:0 0 12px rgba(255,171,64,.3);
+        }
+        .event-progress .prog-text {
+            position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+            font-size:.75em; font-weight:700; color:#fff;
+            text-shadow:0 0 4px rgba(0,0,0,.5);
+        }
+        .event-stats-grid {
+            display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr));
+            gap:10px; margin-bottom:18px;
+        }
+        .event-stat-box {
+            background:rgba(255,171,64,.03); border:1px solid rgba(255,171,64,.1);
+            border-radius:10px; padding:14px 10px; text-align:center;
+        }
+        .event-stat-box .label { font-size:.72em; color:var(--text-dim); margin-bottom:4px; letter-spacing:1px; }
+        .event-stat-box .val { font-size:1.3em; font-weight:800; }
+        .pull-history-list {
+            display:flex; flex-direction:column; gap:6px;
+        }
+        .pull-history-item {
+            display:flex; align-items:center; gap:12px;
+            padding:8px 14px; border-radius:8px;
+            background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.04);
+            font-size:.85em; transition:all .2s;
+        }
+        .pull-history-item:hover { background:rgba(0,229,255,.04); border-color:rgba(0,229,255,.1); }
+        .pull-history-item .pull-order-num {
+            width:28px; height:28px; border-radius:50%;
+            background:rgba(0,229,255,.1); border:1px solid rgba(0,229,255,.2);
+            display:flex; align-items:center; justify-content:center;
+            font-size:.8em; font-weight:700; color:var(--cyan); flex-shrink:0;
+        }
+        .pull-history-item .pull-cost-info {
+            margin-left:auto; font-size:.78em; color:var(--text-dim);
+        }
+
         /* ===== 回到頂端 ===== */
         .back-top {
             position:fixed; bottom:24px; right:24px; width:42px; height:42px;
@@ -695,9 +836,11 @@ function switchTab(tab, btn) {
     document.querySelectorAll('#app > .tab-page').forEach(function(p){ p.classList.remove('show'); });
     var target;
     if (tab === 'admin') target = document.getElementById('tabAdmin');
+    else if (tab === 'special') target = document.getElementById('tabSpecial');
     else target = document.getElementById('tabGacha');
     if (target) target.classList.add('show');
     if (tab === 'admin' && !window._adminInitialized) initAdminPanel();
+    if (tab === 'special' && !window._specialInitialized) initSpecialTab();
     window.scrollTo({top:0, behavior:'smooth'});
 }
 
@@ -731,6 +874,7 @@ function render() {
     // --- 分頁 Tab ---
     h += '<div class="tab-bar">';
     h += '<button class="tab-btn active" onclick="switchTab(\'gacha\',this)">抽卡紀錄</button>';
+    h += '<button class="tab-btn" onclick="switchTab(\'special\',this)">特殊活動</button>';
     h += '<button class="tab-btn" onclick="switchTab(\'admin\',this)">管理後台</button>';
     h += '</div>';
 
@@ -910,6 +1054,9 @@ function render() {
 
     h += '</div>'; // tabGacha
 
+    // ========== 特殊活動分頁 ==========
+    h += '<div class="tab-page" id="tabSpecial"><div id="specialTabContent"></div></div>';
+
     // ========== 管理後台分頁 ==========
     h += '<div class="tab-page" id="tabAdmin"><div id="adminTabContent"></div></div>';
 
@@ -1016,6 +1163,198 @@ window.addEventListener('resize', function(){
 });
 
 render();
+
+// ============================
+// 特殊活動：初始化
+// ============================
+window._specialInitialized = false;
+
+function initSpecialTab() {
+    if (window._specialInitialized) return;
+    window._specialInitialized = true;
+
+    var sh = '';
+
+    if (typeof specialEvents === 'undefined' || specialEvents.length === 0) {
+        sh += '<div style="text-align:center;padding:60px 20px;color:var(--text-dim)">';
+        sh += '<div style="font-size:2em;margin-bottom:12px">📦</div>';
+        sh += '<div style="font-size:1.1em">目前沒有特殊活動資料</div>';
+        sh += '</div>';
+        document.getElementById('specialTabContent').innerHTML = sh;
+        return;
+    }
+
+    specialEvents.forEach(function(evt) {
+        if (evt.type === 'blindbox') {
+            sh += renderBlindboxEvent(evt);
+        }
+    });
+
+    document.getElementById('specialTabContent').innerHTML = sh;
+}
+
+function renderBlindboxEvent(evt) {
+    var h = '';
+    var drawn = evt.pulls.length;
+    var total = evt.totalBoxes;
+    var remaining = total - drawn;
+    var pct = Math.round(drawn / total * 100);
+
+    // 建立已抽出對照（支援重複品項，依序配對）
+    var drawnMap = []; // 對應 items 陣列，每格存 order 或 null
+    var pullsCopy = evt.pulls.map(function(p) { return {n:p.n, order:p.order, used:false}; });
+    evt.items.forEach(function(item, idx) {
+        var matched = null;
+        for (var j = 0; j < pullsCopy.length; j++) {
+            if (!pullsCopy[j].used && pullsCopy[j].n === item.n) {
+                matched = pullsCopy[j].order;
+                pullsCopy[j].used = true;
+                break;
+            }
+        }
+        drawnMap.push(matched);
+    });
+
+    // 計算等級統計
+    var sCount = 0, aCount = 0, bCount = 0;
+    evt.pulls.forEach(function(p) {
+        if (p.grade === 'S') sCount++;
+        else if (p.grade === 'A') aCount++;
+        else bCount++;
+    });
+
+    // 計算已花費（根據每次實際使用的貨幣）
+    var spentStones = 0, spentFons = 0;
+    for (var i = 0; i < drawn; i++) {
+        var usedCurrency = evt.pulls[i].currency || 'stones';
+        if (usedCurrency === 'stones') spentStones += evt.prices.stones[i];
+        else spentFons += evt.prices.fons[i];
+    }
+    // 計算全部價格合計
+    var totalStones = 0, totalFons = 0;
+    for (var i = 0; i < evt.prices.stones.length; i++) {
+        totalStones += evt.prices.stones[i];
+        totalFons += evt.prices.fons[i];
+    }
+
+    h += '<div class="blindbox-event">';
+
+    // 標題
+    h += '<div class="event-header">';
+    h += '<div class="event-name">盲盒【' + evt.name + '】</div>';
+    h += '<span class="banner-date">' + evt.date + '</span>';
+    h += '</div>';
+
+    // 說明
+    h += '<div class="event-desc">' + evt.description + '</div>';
+
+    // 進度條
+    h += '<div class="event-progress">';
+    h += '<span style="color:var(--orange);font-weight:700">' + drawn + '/' + total + '</span>';
+    h += '<div class="prog-bar"><div class="prog-fill" style="width:' + pct + '%"></div>';
+    h += '<div class="prog-text">' + pct + '%</div></div>';
+    h += '<span style="color:var(--text-dim);font-size:.85em">剩餘 ' + remaining + ' 個</span>';
+    h += '</div>';
+
+    // 統計卡片
+    h += '<div class="event-stats-grid">';
+    h += '<div class="event-stat-box"><div class="label">已開啟</div><div class="val" style="color:var(--orange)">' + drawn + '</div></div>';
+    h += '<div class="event-stat-box"><div class="label">S 級</div><div class="val" style="color:var(--grade-s)">' + sCount + '</div></div>';
+    h += '<div class="event-stat-box"><div class="label">A 級</div><div class="val" style="color:var(--grade-a)">' + aCount + '</div></div>';
+    h += '<div class="event-stat-box"><div class="label">B 級</div><div class="val" style="color:var(--grade-b)">' + bCount + '</div></div>';
+    h += '<div class="event-stat-box"><div class="label">已花' + evt.prices.stonesName + '</div><div class="val" style="color:var(--cyan)">' + spentStones.toLocaleString() + '</div></div>';
+    h += '<div class="event-stat-box"><div class="label">已花' + evt.prices.fonsName + '</div><div class="val" style="color:var(--teal)">' + spentFons.toLocaleString() + '</div></div>';
+    h += '</div>';
+
+    // --- 盲盒全覽 ---
+    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">盲盒內容一覽<span class="badge-count">' + total + ' 個</span><span class="arrow">▼</span></div>';
+    h += '<div class="sec-body">';
+    h += '<div class="blindbox-grid">';
+    evt.items.forEach(function(item, idx) {
+        var order = drawnMap[idx];
+        var isOpened = (order !== null);
+        var cellClass = isOpened ? 'opened' : 'unopened';
+        var rankClass = item.grade === 'S' ? 's-rank' : item.grade === 'A' ? 'a-rank' : 'b-rank';
+
+        h += '<div class="blindbox-cell ' + cellClass + '">';
+        h += '<div class="box-num"><span class="grade-tag grade-' + item.grade.toLowerCase() + '">' + item.grade + '</span></div>';
+        if (isOpened) {
+            h += '<div class="box-name ' + rankClass + '">' + item.n + '</div>';
+            h += '<div class="box-order">第 ' + order + ' 抽開出</div>';
+        } else {
+            h += '<div class="box-name ' + rankClass + '">' + item.n + '</div>';
+            h += '<div class="box-unknown">?</div>';
+        }
+        h += '</div>';
+    });
+    h += '</div>';
+    h += '</div></div>';
+
+    // --- 抽取紀錄 ---
+    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">抽取紀錄<span class="badge-count">' + drawn + ' 次</span><span class="arrow">▼</span></div>';
+    h += '<div class="sec-body">';
+    h += '<div class="pull-history-list">';
+    evt.pulls.forEach(function(p, idx) {
+        var rankClass = p.grade === 'S' ? 's-rank' : p.grade === 'A' ? 'a-rank' : 'b-rank';
+        var usedCurrency = p.currency || 'stones';
+        var costDisplay = '';
+        if (usedCurrency === 'stones') {
+            costDisplay = '💎 ' + evt.prices.stones[idx].toLocaleString() + ' ' + evt.prices.stonesName;
+        } else {
+            costDisplay = evt.prices.fons[idx].toLocaleString() + ' ' + evt.prices.fonsName;
+        }
+
+        h += '<div class="pull-history-item">';
+        h += '<div class="pull-order-num">' + p.order + '</div>';
+        h += '<span class="grade-tag grade-' + p.grade.toLowerCase() + '">' + p.grade + '</span>';
+        h += '<span class="pull-name ' + rankClass + '">' + p.n + '</span>';
+        h += '<span class="pull-cost-info">' + costDisplay + '</span>';
+        h += '</div>';
+    });
+    h += '</div>';
+    h += '</div></div>';
+
+    // --- 價格表 ---
+    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">盲盒價格表<span class="arrow">▼</span></div>';
+    h += '<div class="sec-body">';
+    h += '<table class="price-table"><thead><tr>';
+    h += '<th>第幾次</th><th>' + evt.prices.stonesName + '</th><th>' + evt.prices.fonsName + '</th><th>狀態</th>';
+    h += '</tr></thead><tbody>';
+    var cumStones = 0, cumC2 = 0;
+    for (var i = 0; i < total; i++) {
+        cumStones += evt.prices.stones[i];
+        cumC2 += evt.prices.fons[i];
+        var rowClass = '';
+        var status = '';
+        if (i < drawn) {
+            rowClass = ' class="used-row"';
+            status = '<span style="color:var(--teal)">✓ 已抽</span>';
+        } else if (i === drawn) {
+            rowClass = ' class="current-row"';
+            status = '<span style="color:var(--orange)">▶ 下一抽</span>';
+        } else {
+            status = '<span style="color:var(--text-dim)">—</span>';
+        }
+        h += '<tr' + rowClass + '>';
+        h += '<td>' + (i + 1) + '</td>';
+        h += '<td>' + evt.prices.stones[i].toLocaleString() + '</td>';
+        h += '<td>' + evt.prices.fons[i].toLocaleString() + '</td>';
+        h += '<td>' + status + '</td>';
+        h += '</tr>';
+    }
+    h += '<tr style="font-weight:700;border-top:2px solid rgba(255,171,64,.2)">';
+    h += '<td style="color:var(--orange)">合計</td>';
+    h += '<td style="color:var(--cyan)">' + totalStones.toLocaleString() + ' ' + evt.prices.stonesName + '</td>';
+    h += '<td style="color:var(--teal)">' + totalFons.toLocaleString() + ' ' + evt.prices.fonsName + '</td>';
+    h += '<td></td>';
+    h += '</tr>';
+    h += '</tbody></table>';
+    h += '</div></div>';
+
+    h += '</div>'; // blindbox-event
+
+    return h;
+}
 
 // ============================
 // 管理後台：初始化

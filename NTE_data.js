@@ -69,3 +69,74 @@ const banners = [
     cost:{ pulls:'10+10', dice:'10+6', stones:'0+640' },
   },
 ];
+
+// ============================
+// 特殊活動資料
+// ============================
+// 新增特殊活動模板：複製下面這段到 specialEvents 陣列最後面，填好存檔即可
+// {
+//     id:'唯一識別碼',              // 例：'speed_rush_2026'
+//     name:'活動名稱',              // 例：'失速狂飆'
+//     date:'日期範圍',              // 例：'2026/6/3-7/7'
+//     type:'blindbox',             // 活動類型：blindbox=盲盒
+//     description:'活動說明',
+//     totalBoxes: 15,              // 盲盒總數
+//     prices:{                     // 每次抽取價格（依次遞增）
+//       stones:[50,80,...],          // 環石價格
+//       stonesName:'環石',          // 環石顯示名稱
+//       fons:[50000,80000,...],     // 方斯價格
+//       fonsName:'方斯',            // 方斯顯示名稱
+//     },
+//     items:[                      // 盲盒內容物
+//       {n:'名稱', grade:'S'},
+//     ],
+//     pulls:[                      // 抽取紀錄（按順序填）
+//       {n:'名稱', grade:'B', order:1},
+//     ],
+// },
+
+const specialEvents = [
+  {
+    id:'speed_rush_2026',
+    name:'失速狂飆',
+    date:'2026/6/3-7/7',
+    type:'blindbox',
+    description:'盲盒總共15個，每單次抽取時，可自行選擇使用環石或方斯抽取，每單次抽取環石與方斯所需數量不同，抽取消耗貨幣數量會隨抽取次數依次增加。',
+    totalBoxes:15,
+    prices:{
+      stones:[50,80,100,150,200,300,500,600,800,1200,1400,1600,1800,2000,2200],
+      stonesName:'環石',
+      fons:[50000,80000,100000,150000,200000,300000,500000,800000,1000000,1500000,2000000,2500000,3000000,3500000,4200000],
+      fonsName:'方斯',
+    },
+    items:[
+      {n:'限定載具【Porsche 918 Spyder】', grade:'S'},
+      {n:'異能者•零限定時裝及頭像【最佳拍檔】', grade:'S'},
+      {n:'捏造骰子*10', grade:'S'},
+      {n:'一封手寫信*3', grade:'S'},
+      {n:'方斯*500000', grade:'A'},
+      {n:'頭像框【怦然瞬間】', grade:'S'},
+      {n:'名片【賽道掠影】', grade:'S'},
+      {n:'捏造骰子*3', grade:'S'},
+      {n:'浮冰電影票*3', grade:'A'},
+      {n:'方斯*100000', grade:'A'},
+      {n:'無夢果核*10', grade:'B'},
+      {n:'特級獵人攻略*10', grade:'A'},
+      {n:'特級獵人攻略*10', grade:'A'},
+      {n:'甲硬幣*100000', grade:'B'},
+      {n:'甲硬幣*100000', grade:'B'},
+    ],
+    // pulls: currency 欄位記錄該次使用的貨幣 ('stones'=環石, 'fons'=方斯)
+    pulls:[
+      {n:'甲硬幣*100000', grade:'B', order:1, currency:'fons'},
+      {n:'浮冰電影票*3', grade:'A', order:2, currency:'fons'},
+      {n:'無夢果核*10', grade:'B', order:3, currency:'fons'},
+      {n:'名片【賽道掠影】', grade:'S', order:4, currency:'fons'},
+      {n:'特級獵人攻略*10', grade:'A', order:5, currency:'fons'},
+      {n:'頭像框【怦然瞬間】', grade:'S', order:6, currency:'fons'},
+      {n:'方斯*500000', grade:'A', order:7, currency:'fons'},
+      {n:'甲硬幣*100000', grade:'B', order:8, currency:'fons'},
+      {n:'捏造骰子*3', grade:'S', order:9, currency:'fons'},
+    ],
+  },
+];
