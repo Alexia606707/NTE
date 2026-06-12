@@ -735,6 +735,21 @@
             .stat-box .val { font-size:1.2em; }
             .stat-box .note { white-space:normal; }
             .chart-grid { grid-template-columns:1fr; }
+            /* --- 管理後台：手機小螢幕 卡池內容物防凸出 --- */
+            #tabAdmin .card-entry { flex-wrap:wrap; }
+            #tabAdmin .card-entry select { flex:1 1 calc(50% - 30px); min-width:0; }
+            #tabAdmin .card-entry input { flex:1 1 100%; min-width:0; }
+            /* --- 管理後台：手機小螢幕 pull-cell 防重疊 --- */
+            #tabAdmin .form-row:has(.pull-cell) { flex-wrap:wrap; gap:8px; }
+            #tabAdmin .pull-cell { min-width:calc(50% - 8px); flex:1 1 calc(50% - 8px); }
+            #tabAdmin .pull-qty-row .qty-btn { width:30px; height:30px; font-size:.9em; }
+            #tabAdmin .pull-qty-row input { width:44px; height:30px; font-size:.8em; }
+            #tabAdmin .pull-cell-tag { font-size:.8em; }
+            #tabAdmin .pull-cell-unit { font-size:.7em; }
+        }
+        @media(max-width:360px){
+            /* --- 管理後台：極小螢幕 pull-cell 一欄一個 --- */
+            #tabAdmin .pull-cell { min-width:100%; flex:1 1 100%; }
         }
     </style>
 </head>
