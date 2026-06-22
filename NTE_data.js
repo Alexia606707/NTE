@@ -138,6 +138,7 @@ const specialEvents = [
       {n:'甲硬幣*100000', grade:'B', order:8, currency:'fons'},
       {n:'捏造骰子*3', grade:'S', order:9, currency:'fons'},
       {n:'異能者•零限定時裝及頭像【最佳拍檔】', grade:'S', order:10, currency:'fons'},
+      {n:'一封手寫信*3', grade:'S', order:11, currency:'fons'},
     ],
   },
 ];
