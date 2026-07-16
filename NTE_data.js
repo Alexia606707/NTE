@@ -68,6 +68,24 @@ const banners = [
     ],
     cost:{ pulls:'10+10', dice:'10+6', stones:'0+640' },
   },
+  {
+    date:'2026/6/24-7/7', name:'無歸路', featured:'卡厄斯',
+    items:[
+      {n:'卡厄斯', grade:'S', type:'角色'},
+      {n:'天際獵手', grade:'A', type:'滑翔翼'},
+      {n:'獵犬奔襲', grade:'S', type:'塗裝'},
+      {n:'放晴日', grade:'S', type:'時裝'},
+    ],
+    pulls:[
+      {n:'翳', grade:'A', type:'角色', at:1},
+      {n:'薄荷', grade:'A', type:'角色', at:10},
+      {n:'海月', grade:'A', type:'角色', at:19},
+      {n:'天際獵手', grade:'A', type:'滑翔翼', at:20},
+      {n:'翳', grade:'A', type:'角色', at:22},
+      {n:'哈尼婭', grade:'A', type:'角色', at:28},
+    ],
+    cost:{ pulls:'10+10+10', dice:'10+10+2', stones:'0+0+1280' },
+  },
 ];
 
 // ============================
@@ -139,6 +157,7 @@ const specialEvents = [
       {n:'捏造骰子*3', grade:'S', order:9, currency:'fons'},
       {n:'異能者•零限定時裝及頭像【最佳拍檔】', grade:'S', order:10, currency:'fons'},
       {n:'一封手寫信*3', grade:'S', order:11, currency:'fons'},
+      {n:'方斯*100000', grade:'A', order:12, currency:'fons'},
     ],
   },
 ];
