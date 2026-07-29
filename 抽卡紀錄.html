@@ -1010,7 +1010,7 @@ function render() {
             allTimelineItems.push({ p:p, tb:tb, tbMaxPulls:tbMaxPulls, isLtd:!!tbItemNames[p.n] });
         });
     }
-    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">獲得紀錄<span class="badge-count">' + allTimelineItems.length + ' 筆</span><span class="arrow" style="font-size:.7em">▼</span></div><div class="sec-body"><div class="timeline" id="timelineWrap">';
+    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">獲得紀錄（由新到舊）<span class="badge-count">' + allTimelineItems.length + ' 筆</span><span class="arrow" style="font-size:.7em">▼</span></div><div class="sec-body"><div class="timeline" id="timelineWrap">';
     allTimelineItems.forEach(function(item, idx) {
         var p = item.p, isS = p.grade === 'S', isLtd = item.isLtd;
         var hidden = idx >= 10 ? ' style="display:none"' : '';
@@ -1027,11 +1027,14 @@ function render() {
     }
     h += '</div></div>';
 
-    // --- 5. 卡池明細（預設收合） ---
-    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">卡池明細<span class="badge-count">' + d.bannerCount + ' 期</span><span class="arrow" style="font-size:.7em">▶</span></div><div class="sec-body" style="display:none">';
+    // --- 5. 卡池明細（預設顯示2期，可展開） ---
+    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">卡池明細（由新到舊）<span class="badge-count">' + d.bannerCount + ' 期</span><span class="arrow" style="font-size:.7em">▼</span></div><div class="sec-body"><div id="bannerWrap">';
+    var bannerIdx = 0;
     for (var bi = banners.length - 1; bi >= 0; bi--) {
         var b = banners[bi];
-        h += '<div class="banner-card">';
+        var bannerHidden = bannerIdx >= 2 ? ' style="display:none"' : '';
+        h += '<div class="banner-card" data-bn-idx="' + bannerIdx + '"' + bannerHidden + '>';
+        bannerIdx++;
         h += '<div class="banner-hd"><div><span class="banner-name">【' + b.name + '】</span><span class="banner-featured">' + b.featured + '</span></div><span class="banner-date">' + b.date + '</span></div>';
         h += '<div class="banner-items">';
         b.items.forEach(function(item) {
@@ -1064,6 +1067,10 @@ function render() {
         h += '<div class="cost-item"><span class="cost-label">骰子</span><span class="cost-val dice">🎲 ' + showFormula(b.cost.dice, bDice) + '</span></div>';
         h += '<div class="cost-item"><span class="cost-label">環石</span><span class="cost-val stones">💎 ' + showFormula(b.cost.stones, bStones) + '</span></div>';
         h += '</div></div>';
+    }
+    h += '</div>'; // bannerWrap
+    if (bannerIdx > 2) {
+        h += '<div id="bnMoreWrap" style="text-align:center;margin-top:12px"><button class="btn btn-accent" onclick="showMoreBanners()">顯示更多（還有 ' + (bannerIdx - 2) + ' 期）</button></div>';
     }
     h += '</div></div>';
 
@@ -1199,16 +1206,31 @@ function initSpecialTab() {
         return;
     }
 
+    var evtIdx = 0;
+    var evtTotal = 0;
+    specialEvents.forEach(function(evt) {
+        if (evt.type === 'blindbox') evtTotal++;
+    });
+    sh += '<div id="evtWrap">';
     specialEvents.forEach(function(evt) {
         if (evt.type === 'blindbox') {
-            sh += renderBlindboxEvent(evt);
+            var isFirst = (evtIdx === 0);
+            var evtHidden = !isFirst ? ' style="display:none"' : '';
+            sh += '<div class="evt-block" data-evt-idx="' + evtIdx + '"' + evtHidden + '>';
+            sh += renderBlindboxEvent(evt, !isFirst);
+            sh += '</div>';
+            evtIdx++;
         }
     });
+    sh += '</div>';
+    if (evtTotal > 1) {
+        sh += '<div id="evtMoreWrap" style="text-align:center;margin-top:12px"><button class="btn btn-accent" onclick="showMoreEvents()">顯示更多（還有 ' + (evtTotal - 1) + ' 期）</button></div>';
+    }
 
     document.getElementById('specialTabContent').innerHTML = sh;
 }
 
-function renderBlindboxEvent(evt) {
+function renderBlindboxEvent(evt, innerCollapsed) {
     var h = '';
     var drawn = evt.pulls.length;
     var total = evt.totalBoxes;
@@ -1282,8 +1304,10 @@ function renderBlindboxEvent(evt) {
     h += '</div>';
 
     // --- 盲盒全覽 ---
-    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">盲盒內容一覽<span class="badge-count">' + total + ' 個</span><span class="arrow">▼</span></div>';
-    h += '<div class="sec-body">';
+    var secArrow = innerCollapsed ? '▶' : '▼';
+    var secDisplay = innerCollapsed ? ' style="display:none"' : '';
+    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">盲盒內容一覽<span class="badge-count">' + total + ' 個</span><span class="arrow">' + secArrow + '</span></div>';
+    h += '<div class="sec-body"' + secDisplay + '>';
     h += '<div class="blindbox-grid">';
     evt.items.forEach(function(item, idx) {
         var order = drawnMap[idx];
@@ -1306,8 +1330,8 @@ function renderBlindboxEvent(evt) {
     h += '</div></div>';
 
     // --- 抽取紀錄 ---
-    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">抽取紀錄<span class="badge-count">' + drawn + ' 次</span><span class="arrow">▼</span></div>';
-    h += '<div class="sec-body">';
+    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">抽取紀錄<span class="badge-count">' + drawn + ' 次</span><span class="arrow">' + secArrow + '</span></div>';
+    h += '<div class="sec-body"' + secDisplay + '>';
     h += '<div class="pull-history-list">';
     evt.pulls.forEach(function(p, idx) {
         var rankClass = p.grade === 'S' ? 's-rank' : p.grade === 'A' ? 'a-rank' : 'b-rank';
@@ -1330,8 +1354,8 @@ function renderBlindboxEvent(evt) {
     h += '</div></div>';
 
     // --- 價格表 ---
-    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">盲盒價格表<span class="arrow">▼</span></div>';
-    h += '<div class="sec-body">';
+    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">盲盒價格表<span class="arrow">' + secArrow + '</span></div>';
+    h += '<div class="sec-body"' + secDisplay + '>';
     h += '<table class="price-table"><thead><tr>';
     h += '<th>第幾次</th><th>' + evt.prices.stonesName + '</th><th>' + evt.prices.fonsName + '</th><th>狀態</th>';
     h += '</tr></thead><tbody>';
@@ -2027,6 +2051,78 @@ function updateTlButtons(total) {
     var h = '';
     if (left > 0) h += '<button class="btn btn-accent" onclick="showMoreTimeline()">顯示更多（還有 ' + left + ' 筆）</button>';
     if (tlShown > 10) h += ' <button class="btn" onclick="collapseTimeline()">收合</button>';
+    wrap.innerHTML = h;
+}
+
+// ============================
+// 卡池明細：展開/收合
+// ============================
+var bnShown = 2;
+
+function showMoreBanners() {
+    var items = document.querySelectorAll('#bannerWrap .banner-card');
+    var total = items.length;
+    bnShown = Math.min(bnShown + 2, total);
+    items.forEach(function(item) {
+        var idx = parseInt(item.dataset.bnIdx);
+        item.style.display = idx < bnShown ? '' : 'none';
+    });
+    updateBnButtons(total);
+}
+
+function collapseBanners() {
+    bnShown = 2;
+    var items = document.querySelectorAll('#bannerWrap .banner-card');
+    items.forEach(function(item) {
+        var idx = parseInt(item.dataset.bnIdx);
+        item.style.display = idx < 2 ? '' : 'none';
+    });
+    updateBnButtons(items.length);
+}
+
+function updateBnButtons(total) {
+    var wrap = document.getElementById('bnMoreWrap');
+    if (!wrap) return;
+    var left = total - bnShown;
+    var h = '';
+    if (left > 0) h += '<button class="btn btn-accent" onclick="showMoreBanners()">顯示更多（還有 ' + left + ' 期）</button>';
+    if (bnShown > 2) h += ' <button class="btn" onclick="collapseBanners()">收合</button>';
+    wrap.innerHTML = h;
+}
+
+// ============================
+// 特殊活動：展開/收合
+// ============================
+var evtShown = 1;
+
+function showMoreEvents() {
+    var items = document.querySelectorAll('#evtWrap .evt-block');
+    var total = items.length;
+    evtShown = Math.min(evtShown + 1, total);
+    items.forEach(function(item) {
+        var idx = parseInt(item.dataset.evtIdx);
+        item.style.display = idx < evtShown ? '' : 'none';
+    });
+    updateEvtButtons(total);
+}
+
+function collapseEvents() {
+    evtShown = 1;
+    var items = document.querySelectorAll('#evtWrap .evt-block');
+    items.forEach(function(item) {
+        var idx = parseInt(item.dataset.evtIdx);
+        item.style.display = idx < 1 ? '' : 'none';
+    });
+    updateEvtButtons(items.length);
+}
+
+function updateEvtButtons(total) {
+    var wrap = document.getElementById('evtMoreWrap');
+    if (!wrap) return;
+    var left = total - evtShown;
+    var h = '';
+    if (left > 0) h += '<button class="btn btn-accent" onclick="showMoreEvents()">顯示更多（還有 ' + left + ' 期）</button>';
+    if (evtShown > 1) h += ' <button class="btn" onclick="collapseEvents()">收合</button>';
     wrap.innerHTML = h;
 }
 

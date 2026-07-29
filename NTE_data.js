@@ -69,7 +69,7 @@ const banners = [
     cost:{ pulls:'10+10', dice:'10+6', stones:'0+640' },
   },
   {
-    date:'2026/6/24-7/7', name:'無歸路', featured:'卡厄斯',
+    date:'2026/6/24-7/8', name:'無歸路', featured:'卡厄斯',
     items:[
       {n:'卡厄斯', grade:'S', type:'角色'},
       {n:'天際獵手', grade:'A', type:'滑翔翼'},
@@ -85,6 +85,20 @@ const banners = [
       {n:'哈尼婭', grade:'A', type:'角色', at:28},
     ],
     cost:{ pulls:'10+10+10', dice:'10+10+2', stones:'0+0+1280' },
+  },
+  {
+    date:'2026/7/8-7/29', name:'破曉前', featured:'真紅',
+    items:[
+      {n:'真紅', grade:'S', type:'角色'},
+      {n:'蔽日之影', grade:'A', type:'滑翔翼'},
+      {n:'赤炎龍影', grade:'S', type:'塗裝'},
+      {n:'地海高校生', grade:'S', type:'時裝'},
+    ],
+    pulls:[
+      {n:'蔽日之影', grade:'A', type:'滑翔翼', at:10},
+      {n:'薄荷', grade:'A', type:'角色', at:10},
+    ],
+    cost:{ pulls:'10', dice:'10', stones:'0' },
   },
 ];
 
