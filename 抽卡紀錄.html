@@ -1212,7 +1212,9 @@ function initSpecialTab() {
         if (evt.type === 'blindbox') evtTotal++;
     });
     sh += '<div id="evtWrap">';
-    specialEvents.forEach(function(evt) {
+    // 倒著跑陣列：資料是舊→新，顯示改成新→舊（同 banners），預設展開最新一期
+    for (var ei = specialEvents.length - 1; ei >= 0; ei--) {
+        var evt = specialEvents[ei];
         if (evt.type === 'blindbox') {
             var isFirst = (evtIdx === 0);
             var evtHidden = !isFirst ? ' style="display:none"' : '';
@@ -1221,7 +1223,7 @@ function initSpecialTab() {
             sh += '</div>';
             evtIdx++;
         }
-    });
+    }
     sh += '</div>';
     if (evtTotal > 1) {
         sh += '<div id="evtMoreWrap" style="text-align:center;margin-top:12px"><button class="btn btn-accent" onclick="showMoreEvents()">顯示更多（還有 ' + (evtTotal - 1) + ' 期）</button></div>';
