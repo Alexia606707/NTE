@@ -266,6 +266,46 @@
         .item-tag.item-a { background:rgba(179,136,255,.08); border-color:rgba(179,136,255,.2); color:var(--grade-a); box-shadow:0 0 6px rgba(179,136,255,.08); }
         .item-tag.item-b { background:rgba(68,138,255,.06); border-color:rgba(68,138,255,.18); color:var(--grade-b); }
 
+        /* ===== 卡池分類 badge & 篩選列（新增：區分限定／復刻卡池） ===== */
+        .kind-badge {
+            font-size:.68em; padding:3px 11px; border-radius:20px; letter-spacing:2px;
+            margin-left:10px; vertical-align:middle; display:inline-block;
+            font-weight:700; border:1px solid;
+        }
+        .kind-badge.kind-ltd   { background:rgba(0,229,255,.1);  border-color:rgba(0,229,255,.3);  color:var(--cyan); }
+        .kind-badge.kind-rerun { background:rgba(255,171,64,.1); border-color:rgba(255,171,64,.3); color:var(--orange); }
+        .kind-badge.kind-other { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.12); color:var(--text-dim); }
+
+        /* ===== 版本 badge（新增：標示卡池屬於哪個遊戲版本，例 1.4上） ===== */
+        .ver-badge {
+            font-size:.68em; padding:3px 10px; border-radius:20px; letter-spacing:1px;
+            margin-left:8px; vertical-align:middle; display:inline-block;
+            font-weight:700; border:1px solid rgba(179,136,255,.3);
+            background:rgba(179,136,255,.1); color:var(--purple);
+            font-family:"Consolas","Monaco",monospace;
+        }
+        /* 復刻檔期的版本 badge，用橘色跟原始檔期區隔 */
+        .ver-badge.ver-rerun {
+            border-color:rgba(255,171,64,.3); background:rgba(255,171,64,.1); color:var(--orange);
+        }
+        /* 抽取紀錄裡標示這一抽屬於復刻檔期 */
+        .rerun-tag {
+            font-size:.68em; padding:1px 7px; border-radius:20px; margin-left:6px;
+            border:1px solid rgba(255,171,64,.3); background:rgba(255,171,64,.1); color:var(--orange);
+            vertical-align:middle; white-space:nowrap;
+        }
+        .filter-bar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+        .filter-btn {
+            font-size:.78em; padding:6px 16px; border-radius:20px; cursor:pointer;
+            background:rgba(255,255,255,.02); border:1px solid var(--border);
+            color:var(--text-dim); letter-spacing:1px; transition:all .2s; font-family:inherit;
+        }
+        .filter-btn:hover { color:var(--cyan); border-color:rgba(0,229,255,.3); }
+        .filter-btn.active {
+            background:rgba(0,229,255,.12); border-color:var(--cyan); color:var(--cyan);
+            box-shadow:0 0 12px rgba(0,229,255,.15);
+        }
+
         /* 抽卡結果表格 */
         table.pull-tbl {
             width:100%; border-collapse:separate; border-spacing:0;
@@ -789,6 +829,49 @@ function sumFormula(str) {
     return String(str).split('+').reduce(function(s, v){ return s + (parseInt(v) || 0); }, 0);
 }
 
+// 卡池明細的顯示狀態（必須在 render() 執行前就有值，否則首次渲染會全部被隱藏）
+var bnShown = 2;        // 目前展開幾期
+var bnFilter = 'all';   // 目前選到的卡池分類
+
+// 卡池分類（新增）：舊資料沒有 kind 欄位的一律視為「限定」
+function bannerKind(b) { return (b && b.kind) ? b.kind : '限定'; }
+// 分類 → CSS class（避免直接用中文當 class 名稱）
+function kindClass(kind) { return kind === '限定' ? 'kind-ltd' : kind === '復刻' ? 'kind-rerun' : 'kind-other'; }
+// 卡池版本（新增）：舊資料沒有 ver 欄位就回空字串，不顯示版本標籤
+function bannerVer(b) { return (b && b.ver) ? b.ver : ''; }
+// 版本 badge HTML（沒填版本就回空字串）
+function verBadge(b) { var v = bannerVer(b); return v ? '<span class="ver-badge">' + v + '</span>' : ''; }
+// 復刻檔期 badge（盲盒用）：沒有 rerun 或沒填版本就回空字串
+function rerunVerBadge(evt) {
+    if (!evt || !evt.rerun || !evt.rerun.ver) return '';
+    return '<span class="ver-badge ver-rerun">↻' + evt.rerun.ver + '</span>';
+}
+// 日期區間字串取結束日，例 '2026/6/3-7/8' 或 '2026/9/30-11/11'
+// 結束段省略年份時沿用起始年；結束月份比起始月份小代表跨年
+function rangeEndDate(range) {
+    if (!range) return null;
+    var parts = String(range).split('-');
+    var start = parts[0].split('/');
+    var end = (parts[1] || parts[0]).split('/');
+    var y, m, d;
+    if (end.length >= 3) { y = parseInt(end[0]); m = parseInt(end[1]); d = parseInt(end[2]); }
+    else {
+        y = parseInt(start[0]); m = parseInt(end[0]); d = parseInt(end[1]);
+        if (m < parseInt(start[1])) y += 1;
+    }
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+    return new Date(y, m - 1, d);
+}
+// 活動排序用的時間：有復刻檔期就用復刻的結束日
+function eventSortTime(evt) {
+    var dt = rangeEndDate(evt && evt.rerun && evt.rerun.date ? evt.rerun.date : (evt && evt.date));
+    return dt ? dt.getTime() : 0;
+}
+// 這一抽是不是在復刻檔期抽的
+function isRerunPull(evt, order) {
+    return !!(evt && evt.rerun && evt.rerun.fromOrder && order >= evt.rerun.fromOrder);
+}
+
 // ============================
 // 計算引擎
 // ============================
@@ -798,10 +881,18 @@ function compute() {
     var totalChars = 0, totalEquips = 0, sChars = 0, aChars = 0, sEquips = 0, aEquips = 0;
     var limitedChars = 0, limitedEquips = 0, stdChars = 0;
     var bannerCount = banners.length;
+    // 新增：實際有抽的卡池數（算「每池平均」用，避免 0 抽的復刻池拉低平均）
+    var activeBannerCount = 0;
+    // 新增：各分類的卡池數
+    var kindStats = {};
     var allPulls = [];
 
     banners.forEach(function(b) {
         var bPulls = sumFormula(b.cost.pulls);
+        // 新增：統計分類與實際有抽的池數
+        if (bPulls > 0) activeBannerCount++;
+        var bKind = bannerKind(b);
+        kindStats[bKind] = (kindStats[bKind] || 0) + 1;
         totalPulls += bPulls;
         totalDice += sumFormula(b.cost.dice);
         totalStones += sumFormula(b.cost.stones);
@@ -839,7 +930,8 @@ function compute() {
         totalS:totalS, totalA:totalA, totalB:totalB,
         totalChars:totalChars, totalEquips:totalEquips, sChars:sChars, aChars:aChars, sEquips:sEquips, aEquips:aEquips,
         limitedChars:limitedChars, limitedEquips:limitedEquips, stdChars:stdChars,
-        bannerCount:bannerCount, allPulls:allPulls, avgPullsPerItem:avgPullsPerItem };
+        bannerCount:bannerCount, activeBannerCount:activeBannerCount, kindStats:kindStats,
+        allPulls:allPulls, avgPullsPerItem:avgPullsPerItem };
 }
 
 // ============================
@@ -883,7 +975,12 @@ function render() {
     h += '<div class="corner-deco bl"></div><div class="corner-deco br"></div>';
     h += '<h1>NTE 異環 抽卡紀錄</h1>';
     var lastDateShort = lastDate.split('/').slice(0,2).join('/');
-    h += '<div class="sub">全 ' + d.bannerCount + ' 期限定卡池完整數據 ── <span style="display:inline-block">' + firstDate + ' ~ ' + lastDateShort + '</span></div>';
+    var kindSummary = Object.keys(d.kindStats).map(function(c) { return c + ' ' + d.kindStats[c]; }).join(' ∣ ');
+    // 版本區間，例「1.0上 ~ 1.4上」；頭尾同版本就只顯示一個
+    var verRange = '';
+    var firstVer = bannerVer(banners[0]), lastVer = bannerVer(banners[banners.length - 1]);
+    if (firstVer && lastVer) verRange = firstVer === lastVer ? ('ver ' + firstVer) : ('ver ' + firstVer + ' ~ ' + lastVer);
+    h += '<div class="sub">全 ' + d.bannerCount + ' 期卡池完整數據（' + kindSummary + '）' + (verRange ? ' ── <span style="display:inline-block;color:var(--purple)">' + verRange + '</span>' : '') + ' ── <span style="display:inline-block">' + firstDate + ' ~ ' + lastDateShort + '</span></div>';
     h += '</div>';
 
     // --- 分頁 Tab ---
@@ -903,8 +1000,9 @@ function render() {
     h += '<div class="stat-box"><div class="label">總獲得</div><div class="val" style="color:var(--cyan)">' + d.allPulls.length + '</div><div class="note">限定 ' + d.limitedChars + '+' + d.limitedEquips + ' + 常駐 ' + d.stdChars + '</div></div>';
     h += '<div class="stat-box"><div class="label">S 級</div><div class="val" style="color:var(--grade-s)">' + d.totalS + '</div><div class="note">角色 ' + d.sChars + ' + 裝扮 ' + d.sEquips + '</div></div>';
     h += '<div class="stat-box"><div class="label">A 級</div><div class="val" style="color:var(--grade-a)">' + d.totalA + '</div><div class="note">角色 ' + d.aChars + ' + 裝扮 ' + d.aEquips + '</div></div>';
-    var avgDicePerBanner = d.bannerCount ? Math.round(d.totalDice / d.bannerCount) : 0;
-    var avgStonesPerBanner = d.bannerCount ? Math.round(d.totalStones / d.bannerCount) : 0;
+    // 「每池平均」用實際有抽的池數當分母，未參與的卡池不算進平均
+    var avgDicePerBanner = d.activeBannerCount ? Math.round(d.totalDice / d.activeBannerCount) : 0;
+    var avgStonesPerBanner = d.activeBannerCount ? Math.round(d.totalStones / d.activeBannerCount) : 0;
     h += '<div class="stat-box"><div class="label">總骰子</div><div class="val" style="color:var(--orange)">' + d.totalDice + '</div><div class="note">每池平均 ' + avgDicePerBanner + '</div></div>';
     h += '<div class="stat-box"><div class="label">總環石</div><div class="val" style="color:var(--cyan)">' + d.totalStones.toLocaleString() + '</div><div class="note">每池平均 ' + avgStonesPerBanner.toLocaleString() + '</div></div>';
     h += '</div>';
@@ -943,7 +1041,8 @@ function render() {
     h += '</div></div>';
 
     // --- 2. 趨勢圖 ---
-    if (banners.length >= 2) {
+    // 條件要跟 drawCharts() 一致（只畫有抽的卡池），否則會出現有標題沒圖的空區塊
+    if (d.activeBannerCount >= 2) {
         h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">抽卡趨勢<span class="arrow" style="font-size:.7em">▼</span></div><div class="sec-body">';
         h += '<div class="chart-wrap"><div style="height:320px"><canvas id="chartPulls"></canvas></div></div>';
         h += '<div class="chart-wrap"><div style="height:320px"><canvas id="chartCost"></canvas></div></div>';
@@ -1019,7 +1118,8 @@ function render() {
         h += '<span class="type-tag ' + getTypeClass(p.type) + '">' + getTypeIcon(p.type) + ' ' + p.type + '</span> ';
         var nameStyle = isLtd ? '' : 'color:var(--text-dim)';
         h += '<span class="pull-name ' + gradeRankClass(p.grade) + '" style="margin-left:4px;' + nameStyle + '">' + (isLtd ? '★ ' : '') + p.n + '</span>';
-        h += '<span style="float:right;color:var(--text-dim);font-size:.8em">【' + item.tb.name + '】' + p.at + '/' + item.tbMaxPulls + '抽</span></div>';
+        var tlVer = bannerVer(item.tb);
+        h += '<span style="float:right;color:var(--text-dim);font-size:.8em">' + (tlVer ? '<span style="color:var(--purple);opacity:.8">' + tlVer + '</span> ' : '') + '【' + item.tb.name + '】' + p.at + '/' + item.tbMaxPulls + '抽</span></div>';
     });
     h += '</div>';
     if (allTimelineItems.length > 10) {
@@ -1028,14 +1128,30 @@ function render() {
     h += '</div></div>';
 
     // --- 5. 卡池明細（預設顯示2期，可展開） ---
-    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">卡池明細（由新到舊）<span class="badge-count">' + d.bannerCount + ' 期</span><span class="arrow" style="font-size:.7em">▼</span></div><div class="sec-body"><div id="bannerWrap">';
+    h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">卡池明細（由新到舊）<span class="badge-count">' + d.bannerCount + ' 期</span><span class="arrow" style="font-size:.7em">▼</span></div><div class="sec-body">';
+    // 新增：分類篩選列（依資料裡實際出現的分類動態產生，只有 2 種以上才顯示）
+    var kindOrder = ['限定', '復刻'];
+    var kindKeys = Object.keys(d.kindStats).sort(function(x, y) {
+        var ix = kindOrder.indexOf(x), iy = kindOrder.indexOf(y);
+        return (ix < 0 ? 99 : ix) - (iy < 0 ? 99 : iy);
+    });
+    if (kindKeys.length > 1) {
+        h += '<div class="filter-bar" id="bnFilterBar">';
+        h += '<button class="filter-btn active" data-f="all">全部 ' + d.bannerCount + '</button>';
+        kindKeys.forEach(function(c) {
+            h += '<button class="filter-btn" data-f="' + c + '">' + c + ' ' + d.kindStats[c] + '</button>';
+        });
+        h += '</div>';
+    }
+    h += '<div id="bannerWrap">';
     var bannerIdx = 0;
     for (var bi = banners.length - 1; bi >= 0; bi--) {
         var b = banners[bi];
         var bannerHidden = bannerIdx >= 2 ? ' style="display:none"' : '';
-        h += '<div class="banner-card" data-bn-idx="' + bannerIdx + '"' + bannerHidden + '>';
+        var bKind = bannerKind(b);
+        h += '<div class="banner-card" data-bn-idx="' + bannerIdx + '" data-kind="' + bKind + '"' + bannerHidden + '>';
         bannerIdx++;
-        h += '<div class="banner-hd"><div><span class="banner-name">【' + b.name + '】</span><span class="banner-featured">' + b.featured + '</span></div><span class="banner-date">' + b.date + '</span></div>';
+        h += '<div class="banner-hd"><div><span class="banner-name">【' + b.name + '】</span><span class="banner-featured">' + b.featured + '</span><span class="kind-badge ' + kindClass(bKind) + '">' + bKind + '</span>' + verBadge(b) + '</div><span class="banner-date">' + b.date + '</span></div>';
         h += '<div class="banner-items">';
         b.items.forEach(function(item) {
             var itemCls = item.grade === 'S' ? 'item-s' : item.grade === 'A' ? 'item-a' : 'item-b';
@@ -1061,6 +1177,12 @@ function render() {
             });
             h += '</tbody></table>';
         }
+        // 新增：這期還沒抽（例如同期開的復刻池）
+        // 區分「完全沒抽」與「有抽但一張都沒中」，避免 0 出貨的卡池被誤會成沒抽
+        else {
+            var emptyMsg = bMaxPulls > 0 ? ('本期已抽 ' + bMaxPulls + ' 抽・未出任何卡') : '本期尚未抽卡';
+            h += '<div style="text-align:center;padding:16px 0;color:var(--text-dim);font-size:.85em;letter-spacing:3px;border-top:1px dashed rgba(255,255,255,.06);border-bottom:1px dashed rgba(255,255,255,.06);margin-bottom:14px">' + emptyMsg + '</div>';
+        }
         h += '<div class="cost-bar">';
         var showFormula = function(formula, total) { return String(formula).indexOf('+') > -1 ? formula + '=' + total : '' + total; };
         h += '<div class="cost-item"><span class="cost-label">抽數</span><span class="cost-val" style="color:var(--teal)">' + showFormula(b.cost.pulls, bMaxPulls) + ' 抽</span></div>';
@@ -1069,9 +1191,8 @@ function render() {
         h += '</div></div>';
     }
     h += '</div>'; // bannerWrap
-    if (bannerIdx > 2) {
-        h += '<div id="bnMoreWrap" style="text-align:center;margin-top:12px"><button class="btn btn-accent" onclick="showMoreBanners()">顯示更多（還有 ' + (bannerIdx - 2) + ' 期）</button></div>';
-    }
+    // 容器固定輸出，按鈕內容交給 applyBannerFilter() 依「目前篩選結果」動態算
+    h += '<div id="bnMoreWrap" style="text-align:center;margin-top:12px"></div>';
     h += '</div></div>';
 
     h += '</div>'; // tabGacha
@@ -1084,23 +1205,29 @@ function render() {
 
     app.innerHTML = h;
 
+    // 新增：初始化卡池明細的篩選 / 展開狀態
+    applyBannerFilter();
+
     // --- 繪製趨勢圖 ---
     drawCharts();
 }
 
 function drawCharts() {
-    if (banners.length < 2) return;
+    // 圖表只畫「實際有抽」的卡池；復刻池在名稱前加 ↺ 以免同名混淆
+    var chartBanners = banners.filter(function(b) { return sumFormula(b.cost.pulls) > 0; });
+    if (chartBanners.length < 2) return;
 
-    var labels = banners.map(function(b) {
+    var labels = chartBanners.map(function(b) {
         var n = b.name;
-        return n.length > 6 ? n.slice(0,6) + '…' : n;
+        n = n.length > 6 ? n.slice(0,6) + '…' : n;
+        return bannerKind(b) === '復刻' ? '↺ ' + n : n;
     });
 
     // 每池資料：分限定/常駐
     var pullsData = [];
     var ltdCharsData = [], ltdEquipsData = [], stdCharsData = [];
     var diceData = [], stonesData = [];
-    banners.forEach(function(b) {
+    chartBanners.forEach(function(b) {
         pullsData.push(sumFormula(b.cost.pulls));
         var bItemNames = {};
         b.items.forEach(function(item) { bItemNames[item.n] = true; });
@@ -1212,18 +1339,18 @@ function initSpecialTab() {
         if (evt.type === 'blindbox') evtTotal++;
     });
     sh += '<div id="evtWrap">';
-    // 倒著跑陣列：資料是舊→新，顯示改成新→舊（同 banners），預設展開最新一期
-    for (var ei = specialEvents.length - 1; ei >= 0; ei--) {
-        var evt = specialEvents[ei];
-        if (evt.type === 'blindbox') {
-            var isFirst = (evtIdx === 0);
-            var evtHidden = !isFirst ? ' style="display:none"' : '';
-            sh += '<div class="evt-block" data-evt-idx="' + evtIdx + '"' + evtHidden + '>';
-            sh += renderBlindboxEvent(evt, !isFirst);
-            sh += '</div>';
-            evtIdx++;
-        }
-    }
+    // 依「最新檔期結束日」由新到舊排序（有復刻就用復刻的結束日），預設展開最新一期
+    // 這樣復刻中的活動即使資料排在陣列前面，也會浮到頂端
+    var sortedEvents = specialEvents.slice().sort(function(a, b) { return eventSortTime(b) - eventSortTime(a); });
+    sortedEvents.forEach(function(evt) {
+        if (evt.type !== 'blindbox') return;
+        var isFirst = (evtIdx === 0);
+        var evtHidden = !isFirst ? ' style="display:none"' : '';
+        sh += '<div class="evt-block" data-evt-idx="' + evtIdx + '"' + evtHidden + '>';
+        sh += renderBlindboxEvent(evt, !isFirst);
+        sh += '</div>';
+        evtIdx++;
+    });
     sh += '</div>';
     if (evtTotal > 1) {
         sh += '<div id="evtMoreWrap" style="text-align:center;margin-top:12px"><button class="btn btn-accent" onclick="showMoreEvents()">顯示更多（還有 ' + (evtTotal - 1) + ' 期）</button></div>';
@@ -1266,8 +1393,8 @@ function renderBlindboxEvent(evt, innerCollapsed) {
     var spentStones = 0, spentFons = 0;
     for (var i = 0; i < drawn; i++) {
         var usedCurrency = evt.pulls[i].currency || 'stones';
-        if (usedCurrency === 'stones') spentStones += evt.prices.stones[i];
-        else spentFons += evt.prices.fons[i];
+        if (usedCurrency === 'stones') spentStones += (evt.prices.stones[i] || 0);
+        else spentFons += (evt.prices.fons[i] || 0);
     }
     // 計算全部價格合計
     var totalStones = 0, totalFons = 0;
@@ -1280,8 +1407,10 @@ function renderBlindboxEvent(evt, innerCollapsed) {
 
     // 標題
     h += '<div class="event-header">';
-    h += '<div class="event-name">盲盒【' + evt.name + '】</div>';
-    h += '<span class="banner-date">' + evt.date + '</span>';
+    h += '<div class="event-name">盲盒【' + evt.name + '】' + verBadge(evt) + rerunVerBadge(evt) + '</div>';
+    // 有復刻檔期就把兩段日期都列出來
+    var evtDateText = evt.date + (evt.rerun && evt.rerun.date ? ' <span style="color:var(--orange)">・復刻 ' + evt.rerun.date + '</span>' : '');
+    h += '<span class="banner-date">' + evtDateText + '</span>';
     h += '</div>';
 
     // 說明
@@ -1339,16 +1468,20 @@ function renderBlindboxEvent(evt, innerCollapsed) {
         var rankClass = p.grade === 'S' ? 's-rank' : p.grade === 'A' ? 'a-rank' : 'b-rank';
         var usedCurrency = p.currency || 'stones';
         var costDisplay = '';
-        if (usedCurrency === 'stones') {
-            costDisplay = '💎 ' + evt.prices.stones[idx].toLocaleString() + ' ' + evt.prices.stonesName;
+        var unitPrice = usedCurrency === 'stones' ? evt.prices.stones[idx] : evt.prices.fons[idx];
+        if (unitPrice === undefined) {
+            costDisplay = '—';   // 價格還沒填
+        } else if (usedCurrency === 'stones') {
+            costDisplay = '💎 ' + unitPrice.toLocaleString() + ' ' + evt.prices.stonesName;
         } else {
-            costDisplay = evt.prices.fons[idx].toLocaleString() + ' ' + evt.prices.fonsName;
+            costDisplay = unitPrice.toLocaleString() + ' ' + evt.prices.fonsName;
         }
 
         h += '<div class="pull-history-item">';
         h += '<div class="pull-order-num">' + p.order + '</div>';
         h += '<span class="grade-tag grade-' + p.grade.toLowerCase() + '">' + p.grade + '</span>';
         h += '<span class="pull-name ' + rankClass + '">' + p.n + '</span>';
+        if (isRerunPull(evt, p.order)) h += '<span class="rerun-tag">復刻</span>';
         h += '<span class="pull-cost-info">' + costDisplay + '</span>';
         h += '</div>';
     });
@@ -1358,13 +1491,18 @@ function renderBlindboxEvent(evt, innerCollapsed) {
     // --- 價格表 ---
     h += '<div class="section"><div class="section-title" onclick="toggleSec(this)">盲盒價格表<span class="arrow">' + secArrow + '</span></div>';
     h += '<div class="sec-body"' + secDisplay + '>';
+    if (!evt.prices.stones.length && !evt.prices.fons.length) {
+        // 價格還沒填（新活動先建了內容物），先擋著不要畫表
+        h += '<div style="text-align:center;padding:20px 0;color:var(--text-dim);font-size:.85em;letter-spacing:2px">價格資料尚未填入</div>';
+        h += '</div></div></div>';
+        return h;
+    }
     h += '<table class="price-table"><thead><tr>';
     h += '<th>第幾次</th><th>' + evt.prices.stonesName + '</th><th>' + evt.prices.fonsName + '</th><th>狀態</th>';
     h += '</tr></thead><tbody>';
-    var cumStones = 0, cumC2 = 0;
     for (var i = 0; i < total; i++) {
-        cumStones += evt.prices.stones[i];
-        cumC2 += evt.prices.fons[i];
+        // 價格只填一半時不要碎掉，沒的格子顯示 —
+        var pStone = evt.prices.stones[i], pFon = evt.prices.fons[i];
         var rowClass = '';
         var status = '';
         if (i < drawn) {
@@ -1377,9 +1515,9 @@ function renderBlindboxEvent(evt, innerCollapsed) {
             status = '<span style="color:var(--text-dim)">—</span>';
         }
         h += '<tr' + rowClass + '>';
-        h += '<td>' + (i + 1) + '</td>';
-        h += '<td>' + evt.prices.stones[i].toLocaleString() + '</td>';
-        h += '<td>' + evt.prices.fons[i].toLocaleString() + '</td>';
+        h += '<td>' + (i + 1) + (isRerunPull(evt, i + 1) ? '<span class="rerun-tag">復刻</span>' : '') + '</td>';
+        h += '<td>' + (pStone === undefined ? '—' : pStone.toLocaleString()) + '</td>';
+        h += '<td>' + (pFon === undefined ? '—' : pFon.toLocaleString()) + '</td>';
         h += '<td>' + status + '</td>';
         h += '</tr>';
     }
@@ -1432,7 +1570,9 @@ function initAdminPanel() {
     // 新增卡池表單
     ah += '<div class="form-section"><h2>新增卡池</h2>';
     ah += '<div class="form-row"><div class="form-group" style="flex:2"><label>卡池名稱（【】裡的名字）</label><input type="text" id="fName" placeholder="例：久夢初醒時"></div>';
-    ah += '<div class="form-group"><label>主打角色</label><input type="text" id="fFeatured" placeholder="例：安魂曲"></div></div>';
+    ah += '<div class="form-group"><label>主打角色</label><input type="text" id="fFeatured" placeholder="例：安魂曲"></div>';
+    ah += '<div class="form-group" style="max-width:130px"><label>分類</label><select id="fKind"><option value="限定">限定</option><option value="復刻">復刻</option></select></div>';
+    ah += '<div class="form-group" style="max-width:130px"><label>版本</label><input type="text" id="fVer" placeholder="例：1.4上"></div></div>';
     ah += '<div class="form-row"><div class="form-group"><label>起始日期</label><input type="date" id="fDateFrom"></div>';
     ah += '<div class="form-group"><label>結束日期</label><input type="date" id="fDateTo"></div></div>';
 
@@ -1641,7 +1781,8 @@ function renderAdminDataList() {
         var bStones = b.cost ? sumFormula(b.cost.stones) : 0;
         h += '<div class="data-item" data-idx="' + count + '"' + hidden + '>'
             + '<div><span class="name">' + (i+1) + '. 【' + b.name + '】</span>'
-            + '<span class="meta" style="margin-left:8px">' + b.featured + '</span></div>'
+            + '<span class="meta" style="margin-left:8px">' + b.featured + '</span>'
+            + '<span class="kind-badge ' + kindClass(bannerKind(b)) + '">' + bannerKind(b) + '</span>' + verBadge(b) + '</div>'
             + '<div class="meta">' + b.date + ' | ' + pullCount + ' 筆 | 🎲' + bDice + ' 💎' + bStones.toLocaleString() + '</div></div>';
     }
     if (banners.length > 5) {
@@ -1831,12 +1972,12 @@ function getCostFormulas() {
         dice.push(parseInt(r.querySelector('.crDice').value) || 0);
         stones.push(parseInt(r.querySelector('.crStones').value) || 0);
     });
-    // 累計抽數
-    var cumPulls = [];
     var sum = 0;
-    pulls.forEach(function(v) { sum += v; cumPulls.push(sum); });
+    pulls.forEach(function(v) { sum += v; });
     return {
-        pulls: cumPulls.join('+'),
+        // 每輪寫「該輪抽數」（例：'10+10+10'），跟資料檔格式一致；
+        // 寫累計值的話 sumFormula() 會再加一次，抽數會被算大
+        pulls: pulls.join('+'),
         dice: dice.join('+'),
         stones: stones.join('+'),
         totalPulls: sum,
@@ -1871,6 +2012,8 @@ function shortDate(isoStr) {
 function buildBannerObj() {
     var name = document.getElementById('fName').value.trim();
     var featured = document.getElementById('fFeatured').value.trim();
+    var kind = document.getElementById('fKind') ? document.getElementById('fKind').value : '限定';   // 新增：卡池分類
+    var ver = document.getElementById('fVer') ? document.getElementById('fVer').value.trim() : '';   // 新增：遊戲版本
     var dateFrom = document.getElementById('fDateFrom').value;
     var dateTo = document.getElementById('fDateTo').value;
 
@@ -1912,7 +2055,6 @@ function buildBannerObj() {
         pulls.push({n:n, grade:grade, type:type, at:at});
     });
     if (hasPullError) return null;
-    if (pulls.length === 0) { showToast('請至少填寫一筆出卡紀錄', true); return null; }
 
     // 花費
     var costData = getCostFormulas();
@@ -1920,13 +2062,22 @@ function buildBannerObj() {
     var cDice = costData.dice || '0';
     var cStones = costData.stones || '0';
 
+    // 沒出卡紀錄時，只有「這期完全沒抽」（總抽數 0）才放行，例如同期開的復刻池
+    // 「有抽但一張都沒中」是合法狀況（例：1.3下 潯復刻 10 抽未出貨），用確認視窗取代直接擋下
+    if (pulls.length === 0 && costData.totalPulls > 0) {
+        var emptyConfirm = '這期填了 ' + costData.totalPulls + ' 抽，但沒有任何出卡紀錄。\n\n'
+            + '確定是「有抽但一張都沒中」嗎？\n'
+            + '按「取消」可以回去補填出卡紀錄。';
+        if (!confirm(emptyConfirm)) { focusEl(document.querySelector('#pullsList .pName'), '請補填出卡紀錄'); return null; }
+    }
+
     var fromFmt = fmtDate(dateFrom);
     var toShort = shortDate(dateTo);
     var fy = dateFrom.split('-')[0], ty = dateTo.split('-')[0];
     var dateStr = fy === ty ? fromFmt + '-' + toShort : fromFmt + '-' + fmtDate(dateTo);
 
     return {
-        date: dateStr, name: name, featured: featured,
+        date: dateStr, name: name, featured: featured, kind: kind, ver: ver,
         items: items, pulls: pulls,
         cost: { pulls:cPulls, dice:cDice, stones:cStones }
     };
@@ -1935,7 +2086,8 @@ function buildBannerObj() {
 function objToCode(obj) {
     if (!obj) return '';
     var lines = ['  {'];
-    lines.push("    date:'" + obj.date + "', name:'" + obj.name + "', featured:'" + obj.featured + "',");
+    // ver 沒填就不輸出這個欄位
+    lines.push("    date:'" + obj.date + "', name:'" + obj.name + "', featured:'" + obj.featured + "', kind:'" + (obj.kind || '限定') + "'," + (obj.ver ? " ver:'" + obj.ver + "'," : ''));
     lines.push('    items:[');
     obj.items.forEach(function(item) {
         lines.push("      {n:'" + item.n + "', grade:'" + item.grade + "', type:'" + item.type + "'},");
@@ -1970,8 +2122,10 @@ async function saveToData() {
     try {
         var resp = await fetch('NTE_data.js?' + Date.now());
         var content = await resp.text();
-        var lastBracket = content.lastIndexOf('];');
-        if (lastBracket === -1) { showToast('NTE_data.js 格式異常，找不到 ];', true); return; }
+        // 只找 banners 陣列的結尾（specialEvents 之前的最後一個 ];），不然卡池會被寫進特殊活動陣列
+        var evtPos = content.indexOf('const specialEvents');
+        var lastBracket = evtPos > -1 ? content.lastIndexOf('];', evtPos) : content.lastIndexOf('];');
+        if (lastBracket === -1) { showToast('NTE_data.js 格式異常，找不到 banners 陣列的 ];', true); return; }
         var newContent = content.substring(0, lastBracket) + code + '\n' + content.substring(lastBracket);
         var blob = new Blob([newContent], {type:'text/javascript;charset=utf-8'});
         var a = document.createElement('a');
@@ -2005,6 +2159,8 @@ function copyCode() {
 function clearForm() {
     document.getElementById('fName').value = '';
     document.getElementById('fFeatured').value = '';
+    if (document.getElementById('fKind')) document.getElementById('fKind').value = '限定';   // 新增
+    if (document.getElementById('fVer')) document.getElementById('fVer').value = '';   // 新增：清掉版本
     document.getElementById('fDateFrom').value = '';
     document.getElementById('fDateTo').value = '';
     document.getElementById('itemsList').innerHTML = '';
@@ -2059,32 +2215,53 @@ function updateTlButtons(total) {
 // ============================
 // 卡池明細：展開/收合
 // ============================
-var bnShown = 2;
+// bnShown / bnFilter 宣告在檔案上方（bannerKind 前面）
+// 先套分類篩選，再從符合的卡池裡取前 bnShown 期顯示
+function applyBannerFilter() {
+    var items = document.querySelectorAll('#bannerWrap .banner-card');
+    if (!items.length) return;
+    var matched = 0;
+    items.forEach(function(item) {
+        if (bnFilter !== 'all' && item.dataset.kind !== bnFilter) {
+            item.style.display = 'none';
+            return;
+        }
+        matched++;
+        item.style.display = matched <= bnShown ? '' : 'none';
+    });
+    updateBnButtons(matched);
+}
+
+// 分類按鈕：用事件委派綁定（按鈕是 innerHTML 動態產生的）
+document.addEventListener('click', function(e) {
+    if (!e.target || !e.target.closest) return;
+    var btn = e.target.closest('#bnFilterBar .filter-btn');
+    if (btn) setBannerFilter(btn.dataset.f, btn);
+});
+
+function setBannerFilter(kind, btn) {
+    bnFilter = kind;
+    bnShown = 2;
+    var bar = document.getElementById('bnFilterBar');
+    if (bar) bar.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    applyBannerFilter();
+}
 
 function showMoreBanners() {
-    var items = document.querySelectorAll('#bannerWrap .banner-card');
-    var total = items.length;
-    bnShown = Math.min(bnShown + 2, total);
-    items.forEach(function(item) {
-        var idx = parseInt(item.dataset.bnIdx);
-        item.style.display = idx < bnShown ? '' : 'none';
-    });
-    updateBnButtons(total);
+    bnShown += 2;
+    applyBannerFilter();
 }
 
 function collapseBanners() {
     bnShown = 2;
-    var items = document.querySelectorAll('#bannerWrap .banner-card');
-    items.forEach(function(item) {
-        var idx = parseInt(item.dataset.bnIdx);
-        item.style.display = idx < 2 ? '' : 'none';
-    });
-    updateBnButtons(items.length);
+    applyBannerFilter();
 }
 
 function updateBnButtons(total) {
     var wrap = document.getElementById('bnMoreWrap');
     if (!wrap) return;
+    if (bnShown > total) bnShown = Math.max(2, total);
     var left = total - bnShown;
     var h = '';
     if (left > 0) h += '<button class="btn btn-accent" onclick="showMoreBanners()">顯示更多（還有 ' + left + ' 期）</button>';
